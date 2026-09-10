@@ -1,6 +1,6 @@
 {
   "name": "review-ledger",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Ledger-backed author/reviewer review loop for Claude Code with Codex as the reviewer",
   "type": "module",
   "private": true,
