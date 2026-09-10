@@ -1,0 +1,20 @@
+{
+  "description": "review-loop: block turn end while a review run has unresolved blocking findings; remind the author to reply after editing a file an open finding points at.",
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/hooks/review-stop-gate.mjs\"", "timeout": 30 }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/hooks/ledger-touch.mjs\"" }
+        ]
+      }
+    ]
+  }
+}
