@@ -1,0 +1,23 @@
+{
+  "reviewer": {
+    "engine": "codex",
+    "model": "gpt-5.6-sol",
+    "effort_open": "xhigh",
+    "effort_round": "medium",
+    "effort_reopen": "high",
+    "probe_model": "gpt-5.6-terra"
+  },
+  "base": "origin/main",
+  "blocking": ["P0", "P1"],
+  "max_rounds": 3,
+  "clean_rounds_required": 1,
+  "timeout_ms": 1200000,
+  "transport": "sandbox",
+  "codex_sandbox": "read-only",
+  "probe": true,
+  "inline_max_bytes": 400000,
+  "gate_tail_bytes": 4000,
+  "exclude": [".review"],
+  "scopes": {},
+  "gates": []
+}
