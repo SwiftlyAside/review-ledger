@@ -37,6 +37,13 @@ test('runCodex: success, non-zero exit, missing output, bad JSON, schema failure
   assert.match(r.error, /schema: verdict/)
   r = runCodex(['x'], { cwd: dir, input: 'q', outFile: out, timeout: 5, spawnSync: () => ({ error: { code: 'ETIMEDOUT' }, stdout: '' }) })
   assert.match(r.error, /timeout after 5 ms/)
+  // timeout AFTER the turn completed with a valid output file = the process hung at exit; the reply is salvaged
+  const done = '{"type":"thread.started","thread_id":"t9"}\n{"type":"turn.completed","usage":{}}\n'
+  r = runCodex(['x'], { cwd: dir, input: 'q', outFile: out, timeout: 5, validate: () => null, spawnSync: () => { writeFileSync(out, JSON.stringify(good)); return { error: { code: 'ETIMEDOUT' }, stdout: done } } })
+  assert.equal(r.ok, true); assert.equal(r.salvaged, true); assert.equal(r.threadId, 't9')
+  // turn.completed but the output file is missing or invalid: still a failure
+  r = runCodex(['x'], { cwd: dir, input: 'q', outFile: join(dir, 'none.json'), timeout: 5, spawnSync: () => ({ error: { code: 'ETIMEDOUT' }, stdout: done }) })
+  assert.equal(r.ok, false); assert.match(r.error, /no output file/)
 })
 test('probe detects ACL breakage and timeouts', () => {
   assert.equal(probe({ model: 'm', root: '/r', spawnSync: () => ({ status: 0, stdout: 'abc123 init', stderr: '' }) }).ok, true)

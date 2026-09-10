@@ -59,7 +59,7 @@ stalled   ⇔ same open set, same HEAD, zero transitions, no new blocking, two r
 - Only `blocking` severities (default P0, P1) hold the loop. P2/P3 are recorded and replied to but never block.
 - `maintain` twice on the same id freezes it as `disputed`; a third argument is not opened.
 - `reopen` is accepted only on frozen or verified items and only with more than 20 characters of new evidence; anything else is discarded.
-- Reviewer failure, timeout (`timeout_ms`, default 20 min) or a schema mismatch is not a round: retried once, then `escalate`.
+- Reviewer failure, timeout (`timeout_ms`, default 20 min) or a schema mismatch is not a round: retried once, then `escalate`. Exception: a timeout whose `--json` stream already carries `turn.completed` and whose output file passes the schema is a finished reply (codex hung at exit, not in the review) — it is accepted and logged as salvaged.
 - An unanswered reply id is a protocol violation: the ledger is left untouched, the request is re-sent once with the violation named; if still unanswered the round is not counted.
 - `close --note` records the user's decision; every unresolved finding becomes `closed_by_user`.
 

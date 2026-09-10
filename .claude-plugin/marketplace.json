@@ -7,7 +7,7 @@
     {
       "name": "review-ledger",
       "description": "Bidirectional author/reviewer review loop with a findings ledger, same-thread resume, and a hard round cap.",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "author": { "name": "Ilan Kim" },
       "source": "./",
       "category": "developer-tools"

@@ -116,6 +116,7 @@ function cmdOpen(opts) {
   log(`R1 ${model}@${effort} transport=${transport} base=${base} files=${files.length} run=${fresh.run_id} … (up to ${cfg.timeout_ms / 60000} min)`)
   const res = runCodex(openArgs({ model, effort, sandbox: cfg.codex_sandbox, root: ROOT, schema: TEMPLATES.schema, outFile: out }), { cwd: ROOT, input: readFileSync(req, 'utf8'), outFile: out, eventsFile: ev, timeout: cfg.timeout_ms, validate: validateReply })
   if (!res.ok) die(`R1 failed (not counted as a round): ${res.error}. Events: ${ev}`)
+  if (res.salvaged) log('R1 reply salvaged: codex answered (turn.completed) but hung at exit until the timeout')
   if (!res.threadId) die('R1 returned no thread id (need codex --json thread.started) — cannot resume later')
   fresh.reviewer.thread_id = res.threadId
   fresh.round = 1
@@ -178,6 +179,7 @@ function cmdRound(opts) {
     res = call()
     if (!res.ok) die(`R${n} retry failed (not counted as a round): ${res.error}. Escalate with ${HINT} escalate`)
   }
+  if (res.salvaged) log(`R${n} reply salvaged: codex answered (turn.completed) but hung at exit until the timeout`)
   let work = structuredClone(l)
   let stats = applyReplies(work, res.output.replies, n)
   if (stats.unanswered.length) {

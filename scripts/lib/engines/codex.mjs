@@ -22,18 +22,30 @@ export function parseThreadId(stdout) {
 }
 const tailStderr = (s) => (s || '').split('\n').filter((x) => x.trim() && !/ERROR rmcp|failed to load skill/.test(x)).slice(-5).join(' | ')
 
+/** True when the --json stream carries a finished turn (codex has answered even if the process never exited). */
+export function turnCompleted(stdout) {
+  for (const line of (stdout || '').split(/\r?\n/)) {
+    if (!line.startsWith('{')) continue
+    try { if (JSON.parse(line).type === 'turn.completed') return true } catch { /* skip */ }
+  }
+  return false
+}
+
 export function runCodex(args, { cwd, input, outFile, eventsFile, timeout, validate, spawnSync = nodeSpawnSync }) {
   const res = spawnSync(codexBin(), [...codexPrefix(), ...args], { cwd, input, encoding: 'utf8', timeout, maxBuffer: 256 * 1024 * 1024 })
   if (res.stdout && eventsFile) writeFileSync(eventsFile, res.stdout)
   const threadId = parseThreadId(res.stdout)
-  if (res.error) return { ok: false, threadId, error: res.error.code === 'ETIMEDOUT' ? `timeout after ${timeout} ms` : String(res.error.message || res.error) }
-  if (res.status !== 0) return { ok: false, threadId, error: `codex exit ${res.status}: ${tailStderr(res.stderr)}` }
+  // A timed-out process that already emitted turn.completed and a valid output file has answered — the hang is at exit,
+  // not in the review (observed 2026-09-10: 20-minute wait after a 271-token reply). Salvage instead of re-running the round.
+  const salvage = res.error?.code === 'ETIMEDOUT' && turnCompleted(res.stdout)
+  if (res.error && !salvage) return { ok: false, threadId, error: res.error.code === 'ETIMEDOUT' ? `timeout after ${timeout} ms` : String(res.error.message || res.error) }
+  if (!salvage && res.status !== 0) return { ok: false, threadId, error: `codex exit ${res.status}: ${tailStderr(res.stderr)}` }
   if (!existsSync(outFile)) return { ok: false, threadId, error: 'no output file' }
   let parsed
   try { parsed = JSON.parse(readFileSync(outFile, 'utf8')) } catch (e) { return { ok: false, threadId, error: `output is not JSON: ${e.message}` } }
   const v = validate ? validate(parsed) : null
   if (v) return { ok: false, threadId, error: `schema: ${v}` }
-  return { ok: true, threadId, output: parsed }
+  return { ok: true, threadId, output: parsed, salvaged: salvage || undefined }
 }
 
 /** 30-second liveness check of the read-only sandbox: can the reviewer run a shell command at all? */

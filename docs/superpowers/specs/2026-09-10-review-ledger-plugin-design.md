@@ -177,6 +177,14 @@ codex 인자: R1 `exec -m <model> -c model_reasoning_effort="<e>" -s <sandbox> -
 4. Genit에서 실전 시드 런 1회(`transport=inline`, Genit overlay 루브릭): 저자 Claude·리뷰어 sol이 3회전 이내 `converged` 또는 사용자 판정 상태 도달. sol 호출 비용은 회전당 약 2.5만 토큰(메모리 실측) — 실행 전 고지.
 5. 플러그인 자체 코드의 교차 리뷰: 작성 Claude → 리뷰 sol(불변식 #4). 이 루프로 자기 자신을 리뷰하는 것이 4번의 시드 런이다.
 
+### 7.4 시드 런 결과 (2026-09-10, Genit `feat/sphinx-spec`, run `20260910-114721`)
+
+- 설정: transport inline · base main · sol xhigh R1 → medium R2·R3 · gates 3종(lint·budget-check·persona-check) · scope `prompt`(27파일, 페이로드 97KB).
+- 결과: **3회전 converged**. R1 P1 2건(이미지 코드 6개 파일 부재 / 페이로드의 편집 메모·플레이스홀더) → 저자 reject 1(스펙 pending 명시 인용)·fix 1(설명·가이드 집필) → R2 accept_rejection·accept_fix + 새 P1 2건(설명의 구 대사 장식 / 가이드의 자동 공개 안내) → 저자 reject 1(자매작 승인 선례 인용)·fix 1 → R3 approve(accept_rejection·accept_fix, 새 지적 0). 저자 reject 2건 모두 수용됨 — "기각 채널"이 실제로 회전을 줄였다. 이전 방식(단방향) 동일 작품 25회전 대비 3회전.
+- 토큰(codex usage 이벤트): R3 입력 106K(캐시 85K)·출력 271. 회전 소요 R1 약 4분, R2 약 7분, R3 재시도 약 2분.
+- **발견한 결함 2건(플러그인)**: ① `git diff --name-only`·`ls-files` 출력의 비ASCII 경로가 `"\354\204…"`로 인용돼 스코프 매칭·본문 수집에서 탈락(한글 파일명 13개 누락) → 0.1.1 `core.quotepath=off`(테스트 추가). ② R3 첫 시도에서 codex가 `turn.completed`와 완전한 응답 파일을 내고도 프로세스가 종료되지 않아 20분 타임아웃 → 재시도로 통과. → 0.1.2: 타임아웃이어도 이벤트 스트림에 `turn.completed`가 있고 응답 파일이 스키마를 통과하면 회전으로 확정(`salvaged` 로그, 테스트 추가). 타임아웃 자체(프로세스 대기 20분)는 남는다 — 스트림을 실시간으로 읽는 spawn 전환은 후속.
+- 루브릭 보강 1건: 시작 설정 이름 HTML 주석 관례(Domain notes) — R1 F2가 이걸 편집 메모로 오인했다.
+
 ## 8. Genit 측 후속(별도 턴, 외부 콘텐츠 미열람 턴에서)
 
 - `.review/config.json`(`transport: inline`, `codex_sandbox: danger-full-access`, gates 3종, scopes: `prompt|lorebook|persona|spec|docs`).
