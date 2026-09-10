@@ -2,3 +2,4 @@ node_modules/
 .review/ledger.json
 .review/ledger.md
 .review/runs/
+.idea/
