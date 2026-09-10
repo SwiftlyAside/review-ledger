@@ -3,11 +3,11 @@ import { writeFileSync, readFileSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-export const CLI = fileURLToPath(new URL('../../scripts/review-loop.mjs', import.meta.url))
+export const CLI = fileURLToPath(new URL('../../scripts/review-ledger.mjs', import.meta.url))
 export const FAKE = fileURLToPath(new URL('../fixtures/fake-codex.mjs', import.meta.url))
 
 export function cli(root, args, extraEnv = {}) {
-  const r = spawnSync(process.execPath, [CLI, ...args], { cwd: root, encoding: 'utf8', env: { ...process.env, CLAUDE_PROJECT_DIR: root, REVIEW_LOOP_CODEX_BIN: process.execPath, REVIEW_LOOP_CODEX_PREFIX: FAKE, FAKE_CODEX_SCENARIO: root + '.scenario.json', FAKE_CODEX_STATE: root + '.scenario.state', ...extraEnv } })
+  const r = spawnSync(process.execPath, [CLI, ...args], { cwd: root, encoding: 'utf8', env: { ...process.env, CLAUDE_PROJECT_DIR: root, REVIEW_LEDGER_CODEX_BIN: process.execPath, REVIEW_LEDGER_CODEX_PREFIX: FAKE, FAKE_CODEX_SCENARIO: root + '.scenario.json', FAKE_CODEX_STATE: root + '.scenario.state', ...extraEnv } })
   return { code: r.status, out: (r.stdout || '') + (r.stderr || '') }
 }
 export function scenario(root, steps) { writeFileSync(root + '.scenario.json', JSON.stringify(steps)); if (existsSync(root + '.scenario.state')) writeFileSync(root + '.scenario.state', '0') }

@@ -1,4 +1,4 @@
-# review-loop 플러그인 설계 — 저자 ↔ 리뷰어 양방향 리뷰 원장
+# review-ledger 플러그인 설계 — 저자 ↔ 리뷰어 양방향 리뷰 원장
 
 2026-09-10. matchably-mall-be(GUI-812, PR #483)와 그 원본인 자매 레포 `something`의 리뷰 원장 루프를 **레포별 복사본이 아니라 공개 Claude Code 플러그인**으로 추출한다. GitHub 배포는 사용자가 한다. 이 문서는 플러그인의 범위·구조·프로토콜·레포 어댑터·검증 기준을 확정한다.
 
@@ -26,13 +26,13 @@ Genit은 스크립트·훅 없이 프로즈 프로토콜만 있어 최대 6회�
 ## 3. 레포 구조 (플러그인 = 레포 루트, Spotify portal-ai-plugins 방식)
 
 ```
-review-loop/
-├── .claude-plugin/plugin.json          # name "review-loop", skills/hooks 선언
-├── .claude-plugin/marketplace.json     # marketplace "review-loop", plugins[0].source "./"
-├── skills/review-loop/SKILL.md         # 저자 절차(트리거·순서). 스크립트 경로는 "이 스킬 디렉터리 기준 ../../scripts"
+review-ledger/
+├── .claude-plugin/plugin.json          # name "review-ledger", skills/hooks 선언
+├── .claude-plugin/marketplace.json     # marketplace "review-ledger", plugins[0].source "./"
+├── skills/review-ledger/SKILL.md         # 저자 절차(트리거·순서). 스크립트 경로는 "이 스킬 디렉터리 기준 ../../scripts"
 ├── hooks/hooks.json                    # Stop + PostToolUse(Edit|Write|MultiEdit), ${CLAUDE_PLUGIN_ROOT}
 ├── scripts/
-│   ├── review-loop.mjs                 # CLI 진입: init | open | reply | round | status | escalate | close
+│   ├── review-ledger.mjs                 # CLI 진입: init | open | reply | round | status | escalate | close
 │   ├── hooks/review-stop-gate.mjs
 │   ├── hooks/ledger-touch.mjs
 │   └── lib/
@@ -66,7 +66,7 @@ review-loop/
 
 ## 4. 레포 어댑터 (`.review/`)
 
-플러그인은 레포를 모른다. 레포는 `.review/`로 자신을 설명한다. `review-loop init`이 골격을 만든다.
+플러그인은 레포를 모른다. 레포는 `.review/`로 자신을 설명한다. `review-ledger init`이 골격을 만든다.
 
 | 파일 | git | 내용 |
 |---|---|---|
@@ -108,19 +108,19 @@ review-loop/
 ### 5.1 회전 흐름
 
 ```
-review-loop open [--scope <name>] [--focus "…"] [--transport inline] [--base <ref>]
+review-ledger open [--scope <name>] [--focus "…"] [--transport inline] [--base <ref>]
    → 프로브 → 게이트 → R1 요청문(core+overlay+타깃/페이로드+게이트 결과) → 리뷰어 새 스레드
    → findings 중복 접기·F1… 부여 → status=open
-review-loop reply <id> fix     --evidence "<명령과 결과>" [--commit sha]
-review-loop reply <id> reject  --reason "<file:line 근거>"
-review-loop reply <id> dispute --reason "<file:line 근거>"
-review-loop reply <id> defer   --reason "<티켓>"        # 차단 심각도 불가
-review-loop round [--effort medium]
+review-ledger reply <id> fix     --evidence "<명령과 결과>" [--commit sha]
+review-ledger reply <id> reject  --reason "<file:line 근거>"
+review-ledger reply <id> dispute --reason "<file:line 근거>"
+review-ledger reply <id> defer   --reason "<티켓>"        # 차단 심각도 불가
+review-ledger round [--effort medium]
    → 회신 안 된 open 지적 있으면 거부 ("the reply is the channel")
    → 게이트 → Rn 요청문(회신·동결·검증·논쟁 목록 + 변경분) → 같은 스레드 resume
    → 리뷰어는 모든 회신 ID에 accept_fix|fix_insufficient|accept_rejection|maintain|withdraw|reopen
    → 원장 반영 → status 계산
-review-loop status | escalate [--note] | close [--note]
+review-ledger status | escalate [--note] | close [--note]
 ```
 
 ### 5.2 지적 상태·수렴 (변경 없음)
@@ -165,15 +165,15 @@ codex 인자: R1 `exec -m <model> -c model_reasoning_effort="<e>" -s <sandbox> -
 - 원장 경로는 `CLAUDE_PROJECT_DIR/.review/ledger.json`. 없으면 훅은 아무것도 하지 않으므로 플러그인을 전역 설치해도 `init` 안 한 레포에는 영향이 없다.
 - 플러그인 `codex` 컴패니언의 Stop 게이트(`codex setup --enable-review-gate`)와 병행하지 않는다(README에 명시).
 
-## 6. 스킬 (`skills/review-loop/SKILL.md`)
+## 6. 스킬 (`skills/review-ledger/SKILL.md`)
 
-트리거: "review loop", "리뷰 루프", "adversarial review", "적대 리뷰", "codex review", "sol 리뷰", "/review-loop", 그리고 완료 선언 직전. 본문은 순서만(init 여부 확인 → open → 지적마다 하나 회신, 인스턴스가 아니라 계열을 닫음 → round → 수렴/에스컬레이션 처리). 스크립트 경로는 "이 스킬 디렉터리에서 `../../scripts/review-loop.mjs`"로 지시한다(superpowers 관례). 절차 정본은 docs/protocol.md.
+트리거: "review loop", "리뷰 루프", "adversarial review", "적대 리뷰", "codex review", "sol 리뷰", "/review-ledger", 그리고 완료 선언 직전. 본문은 순서만(init 여부 확인 → open → 지적마다 하나 회신, 인스턴스가 아니라 계열을 닫음 → round → 수렴/에스컬레이션 처리). 스크립트 경로는 "이 스킬 디렉터리에서 `../../scripts/review-ledger.mjs`"로 지시한다(superpowers 관례). 절차 정본은 docs/protocol.md.
 
 ## 7. 검증 기준
 
 1. `node --test tests/` 전부 통과. 가짜 codex로 e2e: (a) 6건 → 전부 fix → R2 accept → `converged`; (b) reject → maintain ×2 → `disputed` → `escalated`; (c) 3회전 미수렴 → `capped`; (d) 미답 회신 → 원장 미변경 + 재요청 → 그래도 미답이면 회전 미계상; (e) `inline` 상한 초과 → 중단.
 2. `claude plugin validate --strict .` 통과.
-3. 로컬 마켓플레이스로 설치(`claude plugin marketplace add <path>` → `claude plugin install review-loop@review-loop`) 후 훅이 등록되고, `init` 안 한 레포에서 Stop 훅이 무해함을 실측.
+3. 로컬 마켓플레이스로 설치(`claude plugin marketplace add <path>` → `claude plugin install review-ledger@review-ledger`) 후 훅이 등록되고, `init` 안 한 레포에서 Stop 훅이 무해함을 실측.
 4. Genit에서 실전 시드 런 1회(`transport=inline`, Genit overlay 루브릭): 저자 Claude·리뷰어 sol이 3회전 이내 `converged` 또는 사용자 판정 상태 도달. sol 호출 비용은 회전당 약 2.5만 토큰(메모리 실측) — 실행 전 고지.
 5. 플러그인 자체 코드의 교차 리뷰: 작성 Claude → 리뷰 sol(불변식 #4). 이 루프로 자기 자신을 리뷰하는 것이 4번의 시드 런이다.
 

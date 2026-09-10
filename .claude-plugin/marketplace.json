@@ -1,11 +1,11 @@
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
-  "name": "review-loop",
-  "description": "Marketplace for the review-loop plugin.",
+  "name": "review-ledger",
+  "description": "Marketplace for the review-ledger plugin.",
   "owner": { "name": "Ilan Kim" },
   "plugins": [
     {
-      "name": "review-loop",
+      "name": "review-ledger",
       "description": "Bidirectional author/reviewer review loop with a findings ledger, same-thread resume, and a hard round cap.",
       "version": "0.1.0",
       "author": { "name": "Ilan Kim" },

@@ -1,5 +1,5 @@
 {
-  "name": "review-loop",
+  "name": "review-ledger",
   "version": "0.1.0",
   "description": "Bidirectional author/reviewer review loop with a findings ledger, same-thread resume, and a hard round cap. Codex (gpt-5.6-sol) reviews; Claude authors.",
   "author": { "name": "Ilan Kim" },

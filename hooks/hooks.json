@@ -1,5 +1,5 @@
 {
-  "description": "review-loop: block turn end while a review run has unresolved blocking findings; remind the author to reply after editing a file an open finding points at.",
+  "description": "review-ledger: block turn end while a review run has unresolved blocking findings; remind the author to reply after editing a file an open finding points at.",
   "hooks": {
     "Stop": [
       {

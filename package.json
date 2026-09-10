@@ -1,5 +1,5 @@
 {
-  "name": "review-loop",
+  "name": "review-ledger",
   "version": "0.1.0",
   "description": "Ledger-backed author/reviewer review loop for Claude Code with Codex as the reviewer",
   "type": "module",

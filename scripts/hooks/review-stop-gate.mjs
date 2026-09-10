@@ -6,7 +6,7 @@ import { join, resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const ROOT = process.env.CLAUDE_PROJECT_DIR ? resolve(process.env.CLAUDE_PROJECT_DIR) : process.cwd()
-const CLI = resolve(dirname(fileURLToPath(import.meta.url)), '..', 'review-loop.mjs')
+const CLI = resolve(dirname(fileURLToPath(import.meta.url)), '..', 'review-ledger.mjs')
 const CLOSED = new Set(['fixed_verified', 'rejected_accepted', 'withdrawn', 'deferred', 'closed_by_user'])
 
 function main() {
@@ -17,7 +17,7 @@ function main() {
   if (!existsSync(p)) return
   const l = JSON.parse(readFileSync(p, 'utf8'))
   if (l.status !== 'open') {
-    if (['capped', 'escalated', 'stalled'].includes(l.status)) process.stderr.write(`[review-loop] run ${l.run_id} is ${l.status} — show .review/ledger.md to the user and record their decision with node "${CLI}" close --note "…"\n`)
+    if (['capped', 'escalated', 'stalled'].includes(l.status)) process.stderr.write(`[review-ledger] run ${l.run_id} is ${l.status} — show .review/ledger.md to the user and record their decision with node "${CLI}" close --note "…"\n`)
     return
   }
   const bo = l.findings.filter((f) => l.config.blocking.includes(f.severity) && !CLOSED.has(f.status))

@@ -1,4 +1,4 @@
-# review-loop protocol
+# review-ledger protocol
 
 Korean: [protocol.ko.md](./protocol.ko.md)
 
@@ -22,7 +22,7 @@ The ledger closes all four: ids, mandatory author replies, blocking-severity gat
 | `.review/config.json` | Reviewer model/effort, base, blocking severities, round cap, transport, scopes, gates | committed |
 | `.review/ledger.json` · `.review/ledger.md` | The ledger (machine · human). Written only by the CLI. `open` creates it | **gitignored** |
 | `.review/runs/<run_id>/r<n>.{request.md,reply.json,events.jsonl}` | Per-round audit trail | **gitignored** |
-| `scripts/review-loop.mjs` | `init` · `open` · `reply` · `round` · `status` · `escalate` · `close` | plugin |
+| `scripts/review-ledger.mjs` | `init` · `open` · `reply` · `round` · `status` · `escalate` · `close` | plugin |
 | `hooks/hooks.json` | Stop gate + PostToolUse reminder | plugin |
 
 ## 3. Round flow

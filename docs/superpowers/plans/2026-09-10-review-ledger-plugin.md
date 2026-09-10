@@ -1,14 +1,14 @@
-# review-loop Plugin Implementation Plan
+# review-ledger Plugin Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Ship `review-loop`, a public Claude Code plugin that runs a ledger-backed, bidirectional author(Claude) ↔ reviewer(Codex) review loop with finding IDs, mandatory author replies, same-thread resume, and a hard round cap.
+**Goal:** Ship `review-ledger`, a public Claude Code plugin that runs a ledger-backed, bidirectional author(Claude) ↔ reviewer(Codex) review loop with finding IDs, mandatory author replies, same-thread resume, and a hard round cap.
 
-**Architecture:** A zero-dependency Node ESM CLI (`scripts/review-loop.mjs`) orchestrates the loop over a per-repo `.review/` adapter (config + rubric overlay + gitignored ledger). Pure state-machine logic lives in `scripts/lib/*.mjs` and is unit-tested without Codex; a fake Codex binary drives end-to-end tests. Two hooks (Stop, PostToolUse) ship in `hooks/hooks.json` and read only the ledger, so the plugin is inert in repos that never ran `init`.
+**Architecture:** A zero-dependency Node ESM CLI (`scripts/review-ledger.mjs`) orchestrates the loop over a per-repo `.review/` adapter (config + rubric overlay + gitignored ledger). Pure state-machine logic lives in `scripts/lib/*.mjs` and is unit-tested without Codex; a fake Codex binary drives end-to-end tests. Two hooks (Stop, PostToolUse) ship in `hooks/hooks.json` and read only the ledger, so the plugin is inert in repos that never ran `init`.
 
 **Tech Stack:** Node ≥ 20 (ESM, `node:test`), `codex` CLI ≥ 0.153 (`exec`, `exec resume`, `--json`, `--output-schema`), Claude Code plugin manifest + marketplace.
 
-**Spec:** `docs/superpowers/specs/2026-09-10-review-loop-plugin-design.md`
+**Spec:** `docs/superpowers/specs/2026-09-10-review-ledger-plugin-design.md`
 
 ## Global Constraints
 
@@ -26,11 +26,11 @@
 
 | Path | Responsibility |
 |---|---|
-| `.claude-plugin/plugin.json` | Plugin manifest (name `review-loop`) |
-| `.claude-plugin/marketplace.json` | Marketplace `review-loop` exposing this repo root as the plugin |
+| `.claude-plugin/plugin.json` | Plugin manifest (name `review-ledger`) |
+| `.claude-plugin/marketplace.json` | Marketplace `review-ledger` exposing this repo root as the plugin |
 | `hooks/hooks.json` | Stop + PostToolUse hook registration via `${CLAUDE_PLUGIN_ROOT}` |
-| `skills/review-loop/SKILL.md` | Author procedure; points at `../../scripts/review-loop.mjs` |
-| `scripts/review-loop.mjs` | CLI: `init open reply round status escalate close` |
+| `skills/review-ledger/SKILL.md` | Author procedure; points at `../../scripts/review-ledger.mjs` |
+| `scripts/review-ledger.mjs` | CLI: `init open reply round status escalate close` |
 | `scripts/lib/paths.mjs` | Repo root / `.review` / plugin root resolution |
 | `scripts/lib/config.mjs` | Defaults, merge, validation, load |
 | `scripts/lib/ledger.mjs` | Ledger I/O, finding state machine, dedup, status, markdown render, reply validation |
@@ -58,7 +58,7 @@
 
 ```json
 {
-  "name": "review-loop",
+  "name": "review-ledger",
   "version": "0.1.0",
   "description": "Ledger-backed author/reviewer review loop for Claude Code with Codex as the reviewer",
   "type": "module",
@@ -84,7 +84,7 @@ node_modules/
 
 ```json
 {
-  "name": "review-loop",
+  "name": "review-ledger",
   "version": "0.1.0",
   "description": "Bidirectional author/reviewer review loop with a findings ledger, same-thread resume, and a hard round cap. Codex (gpt-5.6-sol) reviews; Claude authors.",
   "author": { "name": "Ilan Kim" },
@@ -98,12 +98,12 @@ node_modules/
 ```json
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
-  "name": "review-loop",
-  "description": "Marketplace for the review-loop plugin.",
+  "name": "review-ledger",
+  "description": "Marketplace for the review-ledger plugin.",
   "owner": { "name": "Ilan Kim" },
   "plugins": [
     {
-      "name": "review-loop",
+      "name": "review-ledger",
       "description": "Bidirectional author/reviewer review loop with a findings ledger, same-thread resume, and a hard round cap.",
       "version": "0.1.0",
       "author": { "name": "Ilan Kim" },
@@ -335,7 +335,7 @@ export const TEMPLATES = {
   rubricRepo: join(PLUGIN_ROOT, 'templates', 'rubric.repo.md'),
   schema: join(PLUGIN_ROOT, 'templates', 'review.schema.json'),
 }
-export const CLI = join(PLUGIN_ROOT, 'scripts', 'review-loop.mjs')
+export const CLI = join(PLUGIN_ROOT, 'scripts', 'review-ledger.mjs')
 
 /** Repo root: CLAUDE_PROJECT_DIR, else git toplevel of cwd, else cwd. */
 export function resolveRoot(cwd = process.cwd()) {
@@ -1013,7 +1013,7 @@ export function protocolViolationSuffix(ids) {
 
 **Interfaces:**
 - Produces: `codexBin()`, `codexPrefix()`, `openArgs({model, effort, sandbox, root, schema, outFile})`, `resumeArgs({threadId, effort, schema, outFile})`, `parseThreadId(stdout)`, `runCodex(args, {cwd, input, outFile, eventsFile, timeout, validate, spawnSync})`, `probe({model, root, timeout, spawnSync})`.
-- Env: `REVIEW_LOOP_CODEX_BIN` (default `codex`), `REVIEW_LOOP_CODEX_PREFIX` (extra first arg — lets tests run `node fake-codex.mjs …`).
+- Env: `REVIEW_LEDGER_CODEX_BIN` (default `codex`), `REVIEW_LEDGER_CODEX_PREFIX` (extra first arg — lets tests run `node fake-codex.mjs …`).
 
 - [ ] **Step 1: Failing test**
 
@@ -1071,8 +1071,8 @@ test('probe detects ACL breakage and timeouts', () => {
 import { spawnSync as nodeSpawnSync } from 'node:child_process'
 import { readFileSync, writeFileSync, existsSync } from 'node:fs'
 
-export function codexBin() { return process.env.REVIEW_LOOP_CODEX_BIN || 'codex' }
-export function codexPrefix() { const p = process.env.REVIEW_LOOP_CODEX_PREFIX; return p ? [p] : [] }
+export function codexBin() { return process.env.REVIEW_LEDGER_CODEX_BIN || 'codex' }
+export function codexPrefix() { const p = process.env.REVIEW_LEDGER_CODEX_PREFIX; return p ? [p] : [] }
 
 export function openArgs({ model, effort, sandbox, root, schema, outFile }) {
   const extra = sandbox === 'danger-full-access' ? ['-c', 'approval_policy="never"'] : []
@@ -1119,10 +1119,10 @@ export function probe({ model, root, timeout = 30000, spawnSync = nodeSpawnSync 
 
 ---
 
-### Task 8: CLI `scripts/review-loop.mjs` + fake codex + e2e tests
+### Task 8: CLI `scripts/review-ledger.mjs` + fake codex + e2e tests
 
 **Files:**
-- Create: `scripts/review-loop.mjs`, `tests/fixtures/fake-codex.mjs`, `tests/helpers/cli.mjs`
+- Create: `scripts/review-ledger.mjs`, `tests/fixtures/fake-codex.mjs`, `tests/helpers/cli.mjs`
 - Test: `tests/e2e.test.mjs`
 
 **Interfaces:**
@@ -1162,11 +1162,11 @@ import { writeFileSync, readFileSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-export const CLI = fileURLToPath(new URL('../../scripts/review-loop.mjs', import.meta.url))
+export const CLI = fileURLToPath(new URL('../../scripts/review-ledger.mjs', import.meta.url))
 export const FAKE = fileURLToPath(new URL('../fixtures/fake-codex.mjs', import.meta.url))
 
 export function cli(root, args, extraEnv = {}) {
-  const r = spawnSync(process.execPath, [CLI, ...args], { cwd: root, encoding: 'utf8', env: { ...process.env, CLAUDE_PROJECT_DIR: root, REVIEW_LOOP_CODEX_BIN: process.execPath, REVIEW_LOOP_CODEX_PREFIX: FAKE, FAKE_CODEX_SCENARIO: join(root, 'scenario.json'), FAKE_CODEX_STATE: join(root, 'scenario.state'), ...extraEnv } })
+  const r = spawnSync(process.execPath, [CLI, ...args], { cwd: root, encoding: 'utf8', env: { ...process.env, CLAUDE_PROJECT_DIR: root, REVIEW_LEDGER_CODEX_BIN: process.execPath, REVIEW_LEDGER_CODEX_PREFIX: FAKE, FAKE_CODEX_SCENARIO: join(root, 'scenario.json'), FAKE_CODEX_STATE: join(root, 'scenario.state'), ...extraEnv } })
   return { code: r.status, out: (r.stdout || '') + (r.stderr || '') }
 }
 export function scenario(root, steps) { writeFileSync(join(root, 'scenario.json'), JSON.stringify(steps)); if (existsSync(join(root, 'scenario.state'))) writeFileSync(join(root, 'scenario.state'), '0') }
@@ -1302,16 +1302,16 @@ test('open with no changes / bad scope / codex failure does not create a run', (
 
 - [ ] **Step 4: Run** `node --test tests/e2e.test.mjs` → FAIL (CLI missing).
 
-- [ ] **Step 5: Implement `scripts/review-loop.mjs`**
+- [ ] **Step 5: Implement `scripts/review-ledger.mjs`**
 
 ```js
 #!/usr/bin/env node
-// review-loop — ledger-backed author ↔ reviewer loop. Author = the agent running this CLI; reviewer = codex exec (same thread resumed each round).
-//   review-loop init [--force]
-//   review-loop open  [--scope <name>] [--focus "…"] [--transport sandbox|inline] [--base <ref>] [--no-probe] [--model m] [--effort e]
-//   review-loop reply <id> <fix|reject|dispute|defer> [--reason "…"] [--evidence "…"] [--commit sha]
-//   review-loop round [--effort e]
-//   review-loop status | escalate [--note "…"] | close [--note "…"]
+// review-ledger — ledger-backed author ↔ reviewer loop. Author = the agent running this CLI; reviewer = codex exec (same thread resumed each round).
+//   review-ledger init [--force]
+//   review-ledger open  [--scope <name>] [--focus "…"] [--transport sandbox|inline] [--base <ref>] [--no-probe] [--model m] [--effort e]
+//   review-ledger reply <id> <fix|reject|dispute|defer> [--reason "…"] [--evidence "…"] [--commit sha]
+//   review-ledger round [--effort e]
+//   review-ledger status | escalate [--note "…"] | close [--note "…"]
 import { readFileSync, writeFileSync, existsSync, mkdirSync, appendFileSync, copyFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -1341,8 +1341,8 @@ function parseArgs(argv) {
   }
   return { opts, pos }
 }
-const die = (msg) => { console.error(`[review-loop] ${msg}`); process.exit(1) }
-const log = (msg) => console.log(`[review-loop] ${msg}`)
+const die = (msg) => { console.error(`[review-ledger] ${msg}`); process.exit(1) }
+const log = (msg) => console.log(`[review-ledger] ${msg}`)
 const nowIso = () => new Date().toISOString()
 const runId = () => new Date().toISOString().replace(/[-:]/g, '').replace(/\..+/, '').replace('T', '-')
 const rubrics = () => {
@@ -1480,14 +1480,14 @@ function cmdRound(opts) {
   log(`R${n} resume ${l.reviewer.thread_id.slice(0, 8)} @${effort} …`)
   let res = call()
   if (!res.ok) {
-    console.error(`[review-loop] R${n} failed: ${res.error} — retrying once`)
+    console.error(`[review-ledger] R${n} failed: ${res.error} — retrying once`)
     res = call()
     if (!res.ok) die(`R${n} retry failed (not counted as a round): ${res.error}. Escalate with ${HINT} escalate`)
   }
   let work = structuredClone(l)
   let stats = applyReplies(work, res.output.replies, n)
   if (stats.unanswered.length) {
-    console.error(`[review-loop] R${n} unanswered replies ${stats.unanswered.join(',')}${stats.ignored.length ? ` (ignored verdicts: ${stats.ignored.join(',')})` : ''} — ledger untouched, re-requesting once`)
+    console.error(`[review-ledger] R${n} unanswered replies ${stats.unanswered.join(',')}${stats.ignored.length ? ` (ignored verdicts: ${stats.ignored.join(',')})` : ''} — ledger untouched, re-requesting once`)
     writeFileSync(req, baseReq + protocolViolationSuffix(stats.unanswered))
     res = call()
     if (!res.ok) die(`R${n} re-request failed (not counted as a round): ${res.error}. Escalate with ${HINT} escalate`)
@@ -1563,7 +1563,7 @@ Notes for the implementer: the ledger's `scope_globs` field (written by `open`) 
 
 ```json
 {
-  "description": "review-loop: block turn end while a review run has unresolved blocking findings; remind the author to reply after editing a file an open finding points at.",
+  "description": "review-ledger: block turn end while a review run has unresolved blocking findings; remind the author to reply after editing a file an open finding points at.",
   "hooks": {
     "Stop": [
       { "hooks": [ { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/hooks/review-stop-gate.mjs\"", "timeout": 30 } ] }
@@ -1625,7 +1625,7 @@ import { join, resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const ROOT = process.env.CLAUDE_PROJECT_DIR ? resolve(process.env.CLAUDE_PROJECT_DIR) : process.cwd()
-const CLI = resolve(dirname(fileURLToPath(import.meta.url)), '..', 'review-loop.mjs')
+const CLI = resolve(dirname(fileURLToPath(import.meta.url)), '..', 'review-ledger.mjs')
 const CLOSED = new Set(['fixed_verified', 'rejected_accepted', 'withdrawn', 'deferred', 'closed_by_user'])
 
 function main() {
@@ -1636,7 +1636,7 @@ function main() {
   if (!existsSync(p)) return
   const l = JSON.parse(readFileSync(p, 'utf8'))
   if (l.status !== 'open') {
-    if (['capped', 'escalated', 'stalled'].includes(l.status)) process.stderr.write(`[review-loop] run ${l.run_id} is ${l.status} — show .review/ledger.md to the user and record their decision with node "${CLI}" close --note "…"\n`)
+    if (['capped', 'escalated', 'stalled'].includes(l.status)) process.stderr.write(`[review-ledger] run ${l.run_id} is ${l.status} — show .review/ledger.md to the user and record their decision with node "${CLI}" close --note "…"\n`)
     return
   }
   const bo = l.findings.filter((f) => l.config.blocking.includes(f.severity) && !CLOSED.has(f.status))
@@ -1659,7 +1659,7 @@ import { join, resolve, relative, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const ROOT = process.env.CLAUDE_PROJECT_DIR ? resolve(process.env.CLAUDE_PROJECT_DIR) : process.cwd()
-const CLI = resolve(dirname(fileURLToPath(import.meta.url)), '..', 'review-loop.mjs')
+const CLI = resolve(dirname(fileURLToPath(import.meta.url)), '..', 'review-ledger.mjs')
 
 function main() {
   let data = {}
@@ -1673,7 +1673,7 @@ function main() {
   const rel = relative(ROOT, resolve(fp)).replace(/\\/g, '/')
   const hit = l.findings.filter((f) => ['open', 'fixed_claimed', 'rejected_by_author'].includes(f.status) && (rel === f.file || rel.endsWith('/' + f.file) || String(f.file).endsWith('/' + rel)))
   if (!hit.length) return
-  process.stdout.write(JSON.stringify({ hookSpecificOutput: { hookEventName: 'PostToolUse', additionalContext: `[review-loop] ${rel} edited — related findings ${hit.map((f) => `${f.id}(${f.status})`).join(', ')}. When done, reply with node "${CLI}" reply <id> fix --evidence "<verification you ran>" and then node "${CLI}" round. Close the whole class, not just this instance.` } }))
+  process.stdout.write(JSON.stringify({ hookSpecificOutput: { hookEventName: 'PostToolUse', additionalContext: `[review-ledger] ${rel} edited — related findings ${hit.map((f) => `${f.id}(${f.status})`).join(', ')}. When done, reply with node "${CLI}" reply <id> fix --evidence "<verification you ran>" and then node "${CLI}" round. Close the whole class, not just this instance.` } }))
 }
 try { main() } catch { /* silent pass */ }
 process.exitCode = 0
@@ -1686,19 +1686,19 @@ process.exitCode = 0
 ### Task 10: Skill, docs, README, plugin validation, local install smoke
 
 **Files:**
-- Create: `skills/review-loop/SKILL.md`, `docs/protocol.md`, `docs/protocol.ko.md`, `README.md`
+- Create: `skills/review-ledger/SKILL.md`, `docs/protocol.md`, `docs/protocol.ko.md`, `README.md`
 
-- [ ] **Step 1: `skills/review-loop/SKILL.md`**
+- [ ] **Step 1: `skills/review-ledger/SKILL.md`**
 
 ```markdown
 ---
-name: review-loop
-description: Run a ledger-backed, bidirectional author↔reviewer review loop (you author, Codex reviews) with finding ids, mandatory replies, same-thread resume, and a 3-round cap. Triggers — "review loop", "리뷰 루프", "adversarial review", "적대 리뷰", "codex review", "sol 리뷰", "/review-loop", and right before declaring a multi-file change done. Use this instead of one-shot review commands, which reopen a fresh thread each time and have no finding ids (10–20 rounds observed).
+name: review-ledger
+description: Run a ledger-backed, bidirectional author↔reviewer review loop (you author, Codex reviews) with finding ids, mandatory replies, same-thread resume, and a 3-round cap. Triggers — "review loop", "리뷰 루프", "adversarial review", "적대 리뷰", "codex review", "sol 리뷰", "/review-ledger", and right before declaring a multi-file change done. Use this instead of one-shot review commands, which reopen a fresh thread each time and have no finding ids (10–20 rounds observed).
 ---
 
-# review-loop
+# review-ledger
 
-CLI: `node "<this skill's directory>/../../scripts/review-loop.mjs" <command>` — call it `RL` below. Protocol reference: `docs/protocol.md` in the plugin root. Do not paraphrase the rules from memory; the ledger and the CLI enforce them.
+CLI: `node "<this skill's directory>/../../scripts/review-ledger.mjs" <command>` — call it `RL` below. Protocol reference: `docs/protocol.md` in the plugin root. Do not paraphrase the rules from memory; the ledger and the CLI enforce them.
 
 1. **First time in a repo:** `RL init`, then edit `.review/rubric.md` (repository invariants = what counts as P0/P1 here) and `.review/config.json` (`base`, `transport`, `scopes`, `gates`). Commit both. Ledger and runs are gitignored.
 2. **Open:** commit or at least save the change, then `RL open --focus "<ticket / what to look at>"` (add `--scope <name>` to limit files, `--transport inline` if the reviewer sandbox cannot read files). Read the printed table.
@@ -1715,20 +1715,20 @@ Rules: never let the reviewer edit files; never tell the reviewer which engine a
 
 - [ ] **Step 2: `docs/protocol.md`** — English protocol reference: sections 1 Problem (four causes), 2 Components (table from spec §3/§4), 3 Round flow (spec §5.1 command listing), 4 States and convergence (spec §5.2 block + the five bullets: blocking only P0/P1; maintain×2 → disputed; reopen needs >20-char evidence; failures/timeouts/schema mismatches are not rounds, one retry then escalate; close records the user's decision), 5 Reviewer invocation (the two codex command lines from spec §5.4, note that `resume` inherits model/sandbox), 6 Transports (sandbox vs inline, probe, inline_max_bytes, delta on later rounds), 7 Gates and scopes, 8 Author rules (spec §5 of matchably: close the class; evidence = command + result; rejection needs file:line; no reviewer edits; do not reveal author engine), 9 Hooks (Stop / PostToolUse behavior; do not enable the codex companion Stop gate alongside). Write it fully; every rule above is already specified in the spec — transcribe, do not invent.
 
-- [ ] **Step 3: `docs/protocol.ko.md`** — Korean twin of the same nine sections (matchably's `dev-docs/review-loop.md` wording is the reference for tone; replace `yarn review:*` with the CLI and add the transport/gates/scopes sections).
+- [ ] **Step 3: `docs/protocol.ko.md`** — Korean twin of the same nine sections (matchably's `dev-docs/review-ledger.md` wording is the reference for tone; replace `yarn review:*` with the CLI and add the transport/gates/scopes sections).
 
 - [ ] **Step 4: `README.md`**
 
 ```markdown
-# review-loop
+# review-ledger
 
 A Claude Code plugin that turns one-way code review into a converging loop. Claude authors, Codex (`gpt-5.6-sol` by default) reviews, and a per-repo ledger gives every finding an id, forces the author to answer each one (`fix` / `reject` / `dispute` / `defer`), resumes the *same* reviewer thread every round, and stops at a hard round cap. One-way review loops were measured at 10–20 rounds; the ledger loop converges in 2–3.
 
 ## Install
 
 ```bash
-claude plugin marketplace add <github-user>/review-loop
-claude plugin install review-loop@review-loop
+claude plugin marketplace add <github-user>/review-ledger
+claude plugin install review-ledger@review-ledger
 ```
 
 Requires Node ≥ 20 and the `codex` CLI on PATH (≥ 0.153: `exec resume`, `--json`, `--output-schema`).
@@ -1736,15 +1736,15 @@ Requires Node ≥ 20 and the `codex` CLI on PATH (≥ 0.153: `exec resume`, `--j
 ## 30-second use
 
 ```bash
-node "$PLUGIN/scripts/review-loop.mjs" init          # once per repo → .review/config.json + rubric.md
+node "$PLUGIN/scripts/review-ledger.mjs" init          # once per repo → .review/config.json + rubric.md
 # edit .review/rubric.md: what is P0/P1 in THIS repo
-node "$PLUGIN/scripts/review-loop.mjs" open --focus "ticket-123"
-node "$PLUGIN/scripts/review-loop.mjs" reply F1 fix --evidence "node --test → 12 passed"
-node "$PLUGIN/scripts/review-loop.mjs" reply F2 reject --reason "src/x.js:31 already validates"
-node "$PLUGIN/scripts/review-loop.mjs" round
+node "$PLUGIN/scripts/review-ledger.mjs" open --focus "ticket-123"
+node "$PLUGIN/scripts/review-ledger.mjs" reply F1 fix --evidence "node --test → 12 passed"
+node "$PLUGIN/scripts/review-ledger.mjs" reply F2 reject --reason "src/x.js:31 already validates"
+node "$PLUGIN/scripts/review-ledger.mjs" round
 ```
 
-In Claude Code just say "run the review loop" — the `review-loop` skill knows the path.
+In Claude Code just say "run the review loop" — the `review-ledger` skill knows the path.
 
 ## How it converges
 
@@ -1794,9 +1794,9 @@ MIT © 2026 Ilan Kim
 
 ```bash
 claude plugin validate --strict .
-claude plugin marketplace add C:/Users/iveci/WebstormProjects/review-loop
-claude plugin install review-loop@review-loop
-claude plugin list | grep review-loop
+claude plugin marketplace add C:/Users/iveci/WebstormProjects/review-ledger
+claude plugin install review-ledger@review-ledger
+claude plugin list | grep review-ledger
 ```
 Expected: validate passes; plugin listed. Then in a scratch repo without `.review/`, start `claude` and end a turn: no block. Record results in the commit message.
 
@@ -1809,7 +1809,7 @@ Expected: validate passes; plugin listed. Then in a scratch repo without `.revie
 **Files (in `C:\Users\iveci\WebstormProjects\Genit`, separate turn without external reads):**
 - Create: `.review/config.json`, `.review/rubric.md`; append `.gitignore`
 
-- [ ] **Step 1:** In Genit: `node "<plugin>/scripts/review-loop.mjs" init`, then set config `{ "base": "main", "transport": "inline", "codex_sandbox": "danger-full-access", "gates": ["node scripts/agents-doc-lint.mjs", "node scripts/genit-budget-check.mjs sphinx"], "scopes": { "prompt": { "include": ["projects/*/prompt/**", "projects/*/lorebook/**", "projects/*/characters/**"] }, "spec": { "include": ["projects/*/spec.md"] }, "docs": { "include": ["AGENTS.md", "CLAUDE.md", ".claude/rules/**", "dev-docs/**"] } } }` and write the Genit overlay rubric (P0 = platform red lines / copyright boundary / account risk; P1 = instruction holes, raw↔card↔lorebook consistency breaks, character-budget overflow, missing output rules; P2 = convention drift; P3 = style nits; inline the relevant section of `.claude/rules/genit-input.md`).
+- [ ] **Step 1:** In Genit: `node "<plugin>/scripts/review-ledger.mjs" init`, then set config `{ "base": "main", "transport": "inline", "codex_sandbox": "danger-full-access", "gates": ["node scripts/agents-doc-lint.mjs", "node scripts/genit-budget-check.mjs sphinx"], "scopes": { "prompt": { "include": ["projects/*/prompt/**", "projects/*/lorebook/**", "projects/*/characters/**"] }, "spec": { "include": ["projects/*/spec.md"] }, "docs": { "include": ["AGENTS.md", "CLAUDE.md", ".claude/rules/**", "dev-docs/**"] } } }` and write the Genit overlay rubric (P0 = platform red lines / copyright boundary / account risk; P1 = instruction holes, raw↔card↔lorebook consistency breaks, character-budget overflow, missing output rules; P2 = convention drift; P3 = style nits; inline the relevant section of `.claude/rules/genit-input.md`).
 - [ ] **Step 2:** Tell the user the estimated cost (≈25K tokens per sol round) and run `open --scope <current change>` on the current `feat/sphinx-spec` branch changes. Drive replies/rounds to `converged` or a user-decision state. Paste `.review/ledger.md` in the report.
 - [ ] **Step 3:** Update AGENTS.md verification row + playbook §2.3 to point at the loop; run `node scripts/agents-doc-lint.mjs`; commit on a branch.
 

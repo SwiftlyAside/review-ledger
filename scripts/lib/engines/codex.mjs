@@ -1,9 +1,9 @@
 import { spawnSync as nodeSpawnSync } from 'node:child_process'
 import { readFileSync, writeFileSync, existsSync } from 'node:fs'
 
-// REVIEW_LOOP_CODEX_BIN overrides the executable; REVIEW_LOOP_CODEX_PREFIX is prepended to the args (tests: node fake-codex.mjs …).
-export function codexBin() { return process.env.REVIEW_LOOP_CODEX_BIN || 'codex' }
-export function codexPrefix() { const p = process.env.REVIEW_LOOP_CODEX_PREFIX; return p ? [p] : [] }
+// REVIEW_LEDGER_CODEX_BIN overrides the executable; REVIEW_LEDGER_CODEX_PREFIX is prepended to the args (tests: node fake-codex.mjs …).
+export function codexBin() { return process.env.REVIEW_LEDGER_CODEX_BIN || 'codex' }
+export function codexPrefix() { const p = process.env.REVIEW_LEDGER_CODEX_PREFIX; return p ? [p] : [] }
 
 export function openArgs({ model, effort, sandbox, root, schema, outFile }) {
   const extra = sandbox === 'danger-full-access' ? ['-c', 'approval_policy="never"'] : []

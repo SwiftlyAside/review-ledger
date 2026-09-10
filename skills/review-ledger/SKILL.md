@@ -1,11 +1,11 @@
 ---
-name: review-loop
-description: Run a ledger-backed, bidirectional author↔reviewer review loop (you author, Codex reviews) with finding ids, mandatory replies, same-thread resume, and a 3-round cap. Triggers — "review loop", "리뷰 루프", "adversarial review", "적대 리뷰", "codex review", "sol 리뷰", "/review-loop", and right before declaring a multi-file change done. Use this instead of one-shot review commands, which reopen a fresh thread each time and have no finding ids (10–20 rounds observed).
+name: review-ledger
+description: Run a ledger-backed, bidirectional author↔reviewer review loop (you author, Codex reviews) with finding ids, mandatory replies, same-thread resume, and a 3-round cap. Triggers — "review loop", "리뷰 루프", "adversarial review", "적대 리뷰", "codex review", "sol 리뷰", "/review-ledger", and right before declaring a multi-file change done. Use this instead of one-shot review commands, which reopen a fresh thread each time and have no finding ids (10–20 rounds observed).
 ---
 
-# review-loop
+# review-ledger
 
-CLI: `node "<this skill's directory>/../../scripts/review-loop.mjs" <command>` — call it `RL` below. Protocol reference: `docs/protocol.md` in the plugin root. Do not paraphrase the rules from memory; the ledger and the CLI enforce them.
+CLI: `node "<this skill's directory>/../../scripts/review-ledger.mjs" <command>` — call it `RL` below. Protocol reference: `docs/protocol.md` in the plugin root. Do not paraphrase the rules from memory; the ledger and the CLI enforce them.
 
 1. **First time in a repo:** `RL init`, then edit `.review/rubric.md` (repository invariants = what counts as P0/P1 here) and `.review/config.json` (`base`, `transport`, `scopes`, `gates`). Commit both. Ledger and runs are gitignored.
 2. **Open:** commit or at least save the change, then `RL open --focus "<ticket / what to look at>"` (add `--scope <name>` to limit files, `--transport inline` if the reviewer sandbox cannot read files). Read the printed table.

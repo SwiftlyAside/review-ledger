@@ -1,12 +1,12 @@
-# review-loop
+# review-ledger
 
 A Claude Code plugin that turns one-way code review into a converging loop. Claude authors, Codex (`gpt-5.6-sol` by default) reviews, and a per-repo ledger gives every finding an id, forces the author to answer each one (`fix` / `reject` / `dispute` / `defer`), resumes the *same* reviewer thread every round, and stops at a hard round cap. One-way review loops were measured at 10–20 rounds; the ledger loop converges in 2–3.
 
 ## Install
 
 ```bash
-claude plugin marketplace add <github-user>/review-loop
-claude plugin install review-loop@review-loop
+claude plugin marketplace add SwiftlyAside/review-ledger
+claude plugin install review-ledger@review-ledger
 ```
 
 Requires Node ≥ 20 and the `codex` CLI on PATH (≥ 0.153: `exec resume`, `--json`, `--output-schema`).
@@ -14,16 +14,16 @@ Requires Node ≥ 20 and the `codex` CLI on PATH (≥ 0.153: `exec resume`, `--j
 ## 30-second use
 
 ```bash
-PLUGIN=~/.claude/plugins/cache/review-loop/review-loop/<version>   # or wherever Claude Code installed it
-node "$PLUGIN/scripts/review-loop.mjs" init          # once per repo → .review/config.json + rubric.md
+PLUGIN=~/.claude/plugins/cache/review-ledger/review-ledger/<version>   # or wherever Claude Code installed it
+node "$PLUGIN/scripts/review-ledger.mjs" init          # once per repo → .review/config.json + rubric.md
 # edit .review/rubric.md: what is P0/P1 in THIS repo
-node "$PLUGIN/scripts/review-loop.mjs" open --focus "ticket-123"
-node "$PLUGIN/scripts/review-loop.mjs" reply F1 fix --evidence "node --test → 12 passed"
-node "$PLUGIN/scripts/review-loop.mjs" reply F2 reject --reason "src/x.js:31 already validates"
-node "$PLUGIN/scripts/review-loop.mjs" round
+node "$PLUGIN/scripts/review-ledger.mjs" open --focus "ticket-123"
+node "$PLUGIN/scripts/review-ledger.mjs" reply F1 fix --evidence "node --test → 12 passed"
+node "$PLUGIN/scripts/review-ledger.mjs" reply F2 reject --reason "src/x.js:31 already validates"
+node "$PLUGIN/scripts/review-ledger.mjs" round
 ```
 
-In Claude Code just say "run the review loop" — the `review-loop` skill knows the path.
+In Claude Code just say "run the review loop" — the `review-ledger` skill knows the path.
 
 ## How it converges
 

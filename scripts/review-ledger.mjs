@@ -1,10 +1,10 @@
 #!/usr/bin/env node
-// review-loop — ledger-backed author ↔ reviewer loop. Author = the agent running this CLI; reviewer = codex exec (same thread resumed each round).
-//   review-loop init [--force]
-//   review-loop open  [--scope <name>] [--focus "…"] [--transport sandbox|inline] [--base <ref>] [--no-probe] [--model m] [--effort e]
-//   review-loop reply <id> <fix|reject|dispute|defer> [--reason "…"] [--evidence "…"] [--commit sha]
-//   review-loop round [--effort e]
-//   review-loop status | escalate [--note "…"] | close [--note "…"]
+// review-ledger — ledger-backed author ↔ reviewer loop. Author = the agent running this CLI; reviewer = codex exec (same thread resumed each round).
+//   review-ledger init [--force]
+//   review-ledger open  [--scope <name>] [--focus "…"] [--transport sandbox|inline] [--base <ref>] [--no-probe] [--model m] [--effort e]
+//   review-ledger reply <id> <fix|reject|dispute|defer> [--reason "…"] [--evidence "…"] [--commit sha]
+//   review-ledger round [--effort e]
+//   review-ledger status | escalate [--note "…"] | close [--note "…"]
 import { readFileSync, writeFileSync, existsSync, mkdirSync, appendFileSync, copyFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -34,8 +34,8 @@ function parseArgs(argv) {
   }
   return { opts, pos }
 }
-const die = (msg) => { console.error(`[review-loop] ${msg}`); process.exit(1) }
-const log = (msg) => console.log(`[review-loop] ${msg}`)
+const die = (msg) => { console.error(`[review-ledger] ${msg}`); process.exit(1) }
+const log = (msg) => console.log(`[review-ledger] ${msg}`)
 const nowIso = () => new Date().toISOString()
 const runId = () => new Date().toISOString().replace(/[-:]/g, '').replace(/\..+/, '').replace('T', '-')
 function rubrics() {
@@ -174,14 +174,14 @@ function cmdRound(opts) {
   log(`R${n} resume ${l.reviewer.thread_id.slice(0, 8)} @${effort} …`)
   let res = call()
   if (!res.ok) {
-    console.error(`[review-loop] R${n} failed: ${res.error} — retrying once`)
+    console.error(`[review-ledger] R${n} failed: ${res.error} — retrying once`)
     res = call()
     if (!res.ok) die(`R${n} retry failed (not counted as a round): ${res.error}. Escalate with ${HINT} escalate`)
   }
   let work = structuredClone(l)
   let stats = applyReplies(work, res.output.replies, n)
   if (stats.unanswered.length) {
-    console.error(`[review-loop] R${n} unanswered replies ${stats.unanswered.join(',')}${stats.ignored.length ? ` (ignored verdicts: ${stats.ignored.join(',')})` : ''} — ledger untouched, re-requesting once`)
+    console.error(`[review-ledger] R${n} unanswered replies ${stats.unanswered.join(',')}${stats.ignored.length ? ` (ignored verdicts: ${stats.ignored.join(',')})` : ''} — ledger untouched, re-requesting once`)
     writeFileSync(req, baseReq + protocolViolationSuffix(stats.unanswered))
     res = call()
     if (!res.ok) die(`R${n} re-request failed (not counted as a round): ${res.error}. Escalate with ${HINT} escalate`)

@@ -9,7 +9,7 @@ export const TEMPLATES = {
   rubricRepo: join(PLUGIN_ROOT, 'templates', 'rubric.repo.md'),
   schema: join(PLUGIN_ROOT, 'templates', 'review.schema.json'),
 }
-export const CLI = join(PLUGIN_ROOT, 'scripts', 'review-loop.mjs')
+export const CLI = join(PLUGIN_ROOT, 'scripts', 'review-ledger.mjs')
 
 /** Repo root: CLAUDE_PROJECT_DIR, else git toplevel of cwd, else cwd. */
 export function resolveRoot(cwd = process.cwd()) {

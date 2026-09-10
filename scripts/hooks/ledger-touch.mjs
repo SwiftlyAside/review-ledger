@@ -5,7 +5,7 @@ import { join, resolve, relative, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const ROOT = process.env.CLAUDE_PROJECT_DIR ? resolve(process.env.CLAUDE_PROJECT_DIR) : process.cwd()
-const CLI = resolve(dirname(fileURLToPath(import.meta.url)), '..', 'review-loop.mjs')
+const CLI = resolve(dirname(fileURLToPath(import.meta.url)), '..', 'review-ledger.mjs')
 
 function main() {
   let data = {}
@@ -19,7 +19,7 @@ function main() {
   const rel = relative(ROOT, resolve(fp)).replace(/\\/g, '/')
   const hit = l.findings.filter((f) => ['open', 'fixed_claimed', 'rejected_by_author'].includes(f.status) && (rel === f.file || rel.endsWith('/' + f.file) || String(f.file).endsWith('/' + rel)))
   if (!hit.length) return
-  process.stdout.write(JSON.stringify({ hookSpecificOutput: { hookEventName: 'PostToolUse', additionalContext: `[review-loop] ${rel} edited — related findings ${hit.map((f) => `${f.id}(${f.status})`).join(', ')}. When done, reply with node "${CLI}" reply <id> fix --evidence "<verification you ran>" and then node "${CLI}" round. Close the whole class, not just this instance.` } }))
+  process.stdout.write(JSON.stringify({ hookSpecificOutput: { hookEventName: 'PostToolUse', additionalContext: `[review-ledger] ${rel} edited — related findings ${hit.map((f) => `${f.id}(${f.status})`).join(', ')}. When done, reply with node "${CLI}" reply <id> fix --evidence "<verification you ran>" and then node "${CLI}" round. Close the whole class, not just this instance.` } }))
 }
 try { main() } catch { /* silent pass */ }
 process.exitCode = 0

@@ -1,4 +1,4 @@
-# review-loop 프로토콜
+# review-ledger 프로토콜
 
 English: [protocol.md](./protocol.md)
 
@@ -22,7 +22,7 @@ English: [protocol.md](./protocol.md)
 | `.review/config.json` | 리뷰어 모델·effort, base, 차단 심각도, 회전 상한, transport, scopes, gates | 커밋 |
 | `.review/ledger.json` · `.review/ledger.md` | 원장(기계·사람). CLI만 쓴다. `open`이 만든다 | **gitignore** |
 | `.review/runs/<run_id>/r<n>.{request.md,reply.json,events.jsonl}` | 회전별 감사 흔적 | **gitignore** |
-| `scripts/review-loop.mjs` | `init` · `open` · `reply` · `round` · `status` · `escalate` · `close` | 플러그인 |
+| `scripts/review-ledger.mjs` | `init` · `open` · `reply` · `round` · `status` · `escalate` · `close` | 플러그인 |
 | `hooks/hooks.json` | Stop 게이트 + PostToolUse 상기 | 플러그인 |
 
 ## 3. 회전 흐름

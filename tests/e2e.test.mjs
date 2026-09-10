@@ -10,7 +10,7 @@ function repoWithChange(config = {}) {
   const r = cli(root, ['init'])
   assert.equal(r.code, 0, r.out)
   writeFileSync(join(root, '.review', 'config.json'), JSON.stringify({ base: 'main', probe: false, ...config }))
-  run(['add', '-A']); run(['commit', '-q', '-m', 'review-loop init'])
+  run(['add', '-A']); run(['commit', '-q', '-m', 'review-ledger init'])
   run(['checkout', '-q', '-b', 'feat'])
   write(root, 'src/a.js', 'const a = 2\n'); write(root, 'src/b.js', 'const b = 2\n')
   run(['add', '-A']); run(['commit', '-q', '-m', 'change'])
