@@ -12,7 +12,7 @@
 
 ## Global Constraints
 
-- Node 20+ ESM, **zero npm dependencies**. Tests use `node --test tests/`.
+- Node 20+ ESM, **zero npm dependencies**. Tests use `node --test "tests/*.test.mjs"`.
 - Never build shell chains (`&&`, `cd`) — call `codex` with `spawnSync` and an args array. Gates are the one place `shell: true` is used (the repo owner writes them).
 - Public defaults are safe: `transport: "sandbox"`, `codex_sandbox: "read-only"`. `danger-full-access` only via a repo's `.review/config.json`, and then `-c approval_policy="never"` is added.
 - Every reviewer call pins model and effort explicitly (`-m`, `-c model_reasoning_effort=`). `codex exec resume` accepts neither `-m` nor `-s` (inherits).
@@ -1543,7 +1543,7 @@ if (isMain) {
 
 Notes for the implementer: the ledger's `scope_globs` field (written by `open`) is what `round` uses to recompute the inline delta; `l.files` grows when new files appear. `closed` and `converged` ledgers allow a fresh `open`. The dedup skip in `assignNewFindings` covers "reviewer re-raises a frozen item as new".
 
-- [ ] **Step 6: Run** `node --test tests/e2e.test.mjs` → PASS (8 tests). Then `node --test tests/` → all green.
+- [ ] **Step 6: Run** `node --test tests/e2e.test.mjs` → PASS (8 tests). Then `node --test "tests/*.test.mjs"` → all green.
 
 - [ ] **Step 7: Commit** `git add -A && git commit -m "feat(cli): init/open/reply/round/status/escalate/close with fake-codex e2e"`
 
