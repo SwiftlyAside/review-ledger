@@ -39,6 +39,21 @@ test('changedFiles: tracked diffs + untracked, filtered by scope, sorted; collec
   assert.equal(collectInline({ root, from: mb, files: all, maxBytes: 5 }).mode, 'over')
 })
 
+test('changedFiles: non-ASCII paths are returned unquoted (core.quotepath) for tracked, untracked and the inline diff', () => {
+  const { root, run } = makeRepo()
+  run(['checkout', '-q', '-b', 'feat'])
+  write(root, 'lorebook/01-설정집.md', '본문\n'); run(['add', '-A']); run(['commit', '-q', '-m', 'k'])
+  write(root, 'characters/02-캐릭터.md', '카드\n')
+  const mb = mergeBase(root, 'main')
+  const files = changedFiles(root, mb, { include: ['**'], exclude: [] })
+  assert.deepEqual(files, ['characters/02-캐릭터.md', 'lorebook/01-설정집.md'])
+  assert.deepEqual(changedFiles(root, mb, { include: ['lorebook/**'], exclude: [] }), ['lorebook/01-설정집.md'])
+  const full = collectInline({ root, from: mb, files, maxBytes: 100000 })
+  assert.equal(full.mode, 'full')
+  assert.match(full.diff, /a\/lorebook\/01-설정집\.md/)
+  assert.equal(full.files.find((f) => f.path === 'lorebook/01-설정집.md').content, '본문\n')
+})
+
 test('sandboxDiffCommand renders excludes', () => {
   assert.equal(sandboxDiffCommand('origin/main', ['.review', 'dist']), "git diff $(git merge-base origin/main HEAD) -- . ':(exclude).review' ':(exclude)dist'")
 })

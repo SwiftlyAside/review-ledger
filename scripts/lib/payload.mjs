@@ -2,8 +2,9 @@ import { execFileSync } from 'node:child_process'
 import { readFileSync, existsSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 
+/** core.quotepath=off: without it git prints non-ASCII paths as "\354\204..." octal in quotes, which then match no glob and read no file. */
 export function git(root, args, fallback = '') {
-  try { return execFileSync('git', args, { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], maxBuffer: 256 * 1024 * 1024 }).trim() } catch { return fallback }
+  try { return execFileSync('git', ['-c', 'core.quotepath=off', ...args], { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], maxBuffer: 256 * 1024 * 1024 }).trim() } catch { return fallback }
 }
 export function globToRegExp(glob) {
   let re = ''
