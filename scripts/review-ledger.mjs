@@ -11,7 +11,7 @@ import { fileURLToPath } from 'node:url'
 import { PLUGIN_ROOT, TEMPLATES, CLI, resolveRoot, reviewDir } from './lib/paths.mjs'
 import { loadConfig, EFFORTS, TRANSPORTS } from './lib/config.mjs'
 import { loadLedger, saveLedger, bootstrapLedger, validateReply, assignNewFindings, applyReplies, computeStatus, blockingOpen, isBlocking, renderMd, AUTHOR_ACTIONS, AWAITING_AUTHOR, CLOSED } from './lib/ledger.mjs'
-import { resolveScope, mergeBase, head, changedFiles, untrackedFiles, collectInline, diffText, readEntry, sandboxDiffCommand, git } from './lib/payload.mjs'
+import { resolveScope, mergeBase, head, changedFiles, untrackedFiles, collectInline, diffText, readEntry, sandboxTarget, git } from './lib/payload.mjs'
 import { runGates } from './lib/gates.mjs'
 import { buildOpenRequest, buildRoundRequest, protocolViolationSuffix } from './lib/request.mjs'
 import { openArgs, resumeArgs, runCodex, probe } from './lib/engines/codex.mjs'
@@ -68,6 +68,13 @@ function inlineDelta(l) {
   return { from, diff: diffText(ROOT, from, files.filter((p) => !untracked.has(p))), newFiles }
 }
 
+/** { diffCommand, untracked } for the request builders; empty for inline. */
+function sandboxTargetFor(transport, base, files) {
+  if (transport !== 'sandbox') return {}
+  const t = sandboxTarget(ROOT, base, files)
+  return { diffCommand: t.diffCommand, untracked: t.untracked }
+}
+
 // ── commands ─────────────────────────────────────────────────────────────────
 function cmdInit(opts) {
   mkdirSync(REVIEW, { recursive: true })
@@ -119,7 +126,7 @@ function cmdOpen(opts) {
   const dir = join(REVIEW, 'runs', fresh.run_id)
   mkdirSync(dir, { recursive: true })
   const req = join(dir, 'r1.request.md'), out = join(dir, 'r1.reply.json'), ev = join(dir, 'r1.events.jsonl')
-  writeFileSync(req, buildOpenRequest({ rubricCore, rubricRepo, rubricScope, base, mergeBase: mb, focus: fresh.focus, transport, root: ROOT, diffCommand: sandboxDiffCommand(base, scope.exclude), payload, gates, scopeName: fresh.scope }))
+  writeFileSync(req, buildOpenRequest({ rubricCore, rubricRepo, rubricScope, base, mergeBase: mb, focus: fresh.focus, transport, root: ROOT, ...sandboxTargetFor(transport, base, files), payload, gates, scopeName: fresh.scope }))
   log(`R1 ${model}@${effort} transport=${transport} base=${base} files=${files.length} run=${fresh.run_id} … (up to ${cfg.timeout_ms / 60000} min)`)
   const res = runCodex(openArgs({ model, effort, sandbox: cfg.codex_sandbox, root: ROOT, schema: TEMPLATES.schema, outFile: out }), { cwd: ROOT, input: readFileSync(req, 'utf8'), outFile: out, eventsFile: ev, timeout: cfg.timeout_ms, validate: validateReply })
   if (!res.ok) die(`R1 failed (not counted as a round): ${res.error}. Events: ${ev}`)
@@ -177,7 +184,9 @@ function cmdRound(opts) {
   const gates = runGates(ROOT, cfg.gates, { tailBytes: cfg.gate_tail_bytes })
   const delta = l.transport === 'inline' ? inlineDelta(l) : null
   const rubricScope = readScopeRubric(l.rubric_scope, l.scope)
-  const baseReq = buildRoundRequest({ rubricCore, rubricRepo, rubricScope, ledger: l, transport: l.transport, root: ROOT, diffCommand: sandboxDiffCommand(l.base, l.scope_globs.exclude), delta, gates })
+  // The file set is refreshed every round: files added or committed since open must reach the reviewer.
+  l.files = changedFiles(ROOT, l.merge_base, l.scope_globs)
+  const baseReq = buildRoundRequest({ rubricCore, rubricRepo, rubricScope, ledger: l, transport: l.transport, root: ROOT, ...sandboxTargetFor(l.transport, l.base, l.files), delta, gates })
   const call = () => runCodex(resumeArgs({ threadId: l.reviewer.thread_id, effort, schema: TEMPLATES.schema, outFile: out }), { cwd: ROOT, input: readFileSync(req, 'utf8'), outFile: out, eventsFile: ev, timeout: cfg.timeout_ms, validate: validateReply })
   writeFileSync(req, baseReq)
   log(`R${n} resume ${l.reviewer.thread_id.slice(0, 8)} @${effort} …`)

@@ -54,6 +54,14 @@ export function collectInline({ root, from, files, maxBytes }) {
   if (diffBytes <= maxBytes) return { diff, files: contents, mode: 'diff-only', bytes: diffBytes }
   return { diff, files: contents, mode: 'over', bytes: diffBytes }
 }
-export function sandboxDiffCommand(base, exclude) {
-  return `git diff $(git merge-base ${base} HEAD) -- . ${exclude.map((x) => `':(exclude)${x}'`).join(' ')}`.trim()
+const shq = (x) => `'${String(x).replace(/'/g, `'\\''`)}'`
+/** Diff limited to the in-scope tracked files (so `--scope` survives the sandbox transport); null when nothing tracked changed. */
+export function sandboxDiffCommand(base, tracked) {
+  return tracked.length ? `git diff $(git merge-base ${base} HEAD) -- ${tracked.map(shq).join(' ')}` : null
+}
+/** Sandbox target for one round: tracked files go into the diff command, untracked ones are listed for full reads (git diff cannot show them). */
+export function sandboxTarget(root, base, files) {
+  const u = untrackedFiles(root)
+  const tracked = files.filter((f) => !u.has(f)), untracked = files.filter((f) => u.has(f))
+  return { diffCommand: sandboxDiffCommand(base, tracked), tracked, untracked }
 }

@@ -85,7 +85,7 @@ The thread id comes from the first `--json` event, `thread.started`. Reply round
 
 ## 6. Transports
 
-- **sandbox** (default): the request tells the reviewer to run `git diff $(git merge-base <base> HEAD)` itself in a read-only sandbox and read any file it needs. Before R1 a 30-second probe (`reviewer.probe_model` at low effort, one shell command) checks that sandbox exec works; if it reports `deny-read ACLs` the run aborts and suggests `--transport inline`.
+- **sandbox** (default): the request tells the reviewer to run `git diff $(git merge-base <base> HEAD) -- <in-scope tracked files>` itself in a read-only sandbox, lists the untracked in-scope files for full reads (plain `git diff` cannot show them), and lets it read any other file for context only. The file set is recomputed every round, so `--scope` and files added after `open` survive the sandbox transport. Before R1 a 30-second probe (`reviewer.probe_model` at low effort, one shell command) checks that sandbox exec works; if it reports `deny-read ACLs` the run aborts and suggests `--transport inline`.
 - **inline**: the request starts with a `<tooling>` block forbidding tool calls, then embeds the diff and the full body of every changed in-scope file. If that exceeds `inline_max_bytes`, file bodies are dropped (diff only); if the diff alone exceeds it the run aborts and asks for a narrower scope. From R2 on, only the diff since the previous round's HEAD plus the bodies of files that are new since R1 are sent; the thread remembers the R1 payload. Commit before `open` for the cleanest deltas.
 
 ## 7. Scopes and gates

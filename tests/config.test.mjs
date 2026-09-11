@@ -9,6 +9,7 @@ test('DEFAULT_CONFIG matches the shipped template', () => {
   const tpl = JSON.parse(readFileSync(new URL('../templates/config.json', import.meta.url), 'utf8'))
   assert.deepEqual(mergeConfig({}), tpl)
   assert.equal(DEFAULT_CONFIG.transport, 'sandbox')
+  assert.deepEqual(DEFAULT_CONFIG.exclude, ['.review/ledger.json', '.review/ledger.md', '.review/runs/**'])
   assert.equal(DEFAULT_CONFIG.codex_sandbox, 'read-only')
 })
 

@@ -45,12 +45,12 @@ Details: [docs/protocol.md](docs/protocol.md) · 한국어: [docs/protocol.ko.md
 | `base` | `origin/main` | diff is `git diff $(git merge-base base HEAD)` |
 | `blocking` | `["P0","P1"]` | only these hold the loop |
 | `max_rounds` / `clean_rounds_required` / `timeout_ms` | `3` / `1` / `1200000` | |
-| `transport` | `sandbox` | `sandbox`: reviewer runs git diff itself (read-only). `inline`: diff + file bodies are embedded and the reviewer is told to use no tools |
+| `transport` | `sandbox` | `sandbox`: reviewer runs a `git diff` limited to the in-scope tracked files itself (read-only); untracked in-scope files are listed for full reads. `inline`: diff + file bodies are embedded and the reviewer is told to use no tools |
 | `codex_sandbox` | `read-only` | set `danger-full-access` only if read-only exec is broken on your machine; `approval_policy=never` is then added |
 | `probe` | `true` | sandbox liveness check before `open` (sandbox transport only) |
 | `inline_max_bytes` | `400000` | inline payload cap; trims to diff-only, then aborts |
 | `gate_tail_bytes` | `4000` | how much of each gate's output the reviewer sees |
-| `exclude` | `[".review"]` | never reviewed |
+| `exclude` | ledger, `ledger.md`, `runs/**` under `.review` | never reviewed. The committed `.review/config.json` and rubrics stay reviewable — a first-segment exclude like `.review` would hide them |
 | `scopes` | `{}` | `{ "docs": { "include": ["docs/**"], "exclude": [] } }` → `open --scope docs` |
 | `scopes.<name>.rubric` | — | optional extra rubric file appended after `.review/rubric.md` when that scope is selected |
 | `gates` | `[]` | shell commands run before every round; exit code + output tail are sent to the reviewer as evidence |
