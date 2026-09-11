@@ -73,7 +73,7 @@ test('sandboxTarget: scope include survives, untracked in-scope files are listed
   assert.equal(t.diffCommand, "git diff $(git merge-base main HEAD) -- ':(top,literal)src/a.js'")
   assert.ok(!t.diffCommand.includes('docs/x.md'))
   // literal pathspec: a bracketed filename must not act as a glob that matches its siblings
-  write(root, 'pages/[id].tsx', 'id\n'); write(root, 'pages/i.tsx', 'i\n'); write(root, 'pages/d.tsx', 'd\n'); run(['add', '-A']); run(['commit', '-q', '-m', 'pages'])
+  write(root, 'pages/[id].tsx', 'id\n'); write(root, 'pages/i.tsx', 'i\n'); write(root, 'pages/d.tsx', 'd\n'); run(['add', 'pages']); run(['commit', '-q', '-m', 'pages'])
   const lit = sandboxTarget(root, 'main', ['pages/[id].tsx'])
   const shown = execFileSync('sh', ['-c', `${lit.diffCommand.replace('git diff ', 'git diff --name-only ')}`], { cwd: root, encoding: 'utf8' }).trim().split('\n')
   assert.deepEqual(shown, ['pages/[id].tsx'])

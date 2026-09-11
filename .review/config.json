@@ -28,7 +28,7 @@
   ],
   "scopes": {},
   "gates": [
-    "npm test --silent 2>&1 | tail -6",
-    "claude plugin validate --strict . 2>&1 | tail -2"
+    "npm test --silent",
+    "claude plugin validate --strict ."
   ]
 }
