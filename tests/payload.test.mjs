@@ -1,5 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
+import { execFileSync } from 'node:child_process'
 import { globToRegExp, matchScope, resolveScope, changedFiles, mergeBase, collectInline, sandboxDiffCommand, sandboxTarget } from '../scripts/lib/payload.mjs'
 import { mergeConfig } from '../scripts/lib/config.mjs'
 import { makeRepo, write } from './helpers/tmp-repo.mjs'
@@ -55,7 +56,7 @@ test('changedFiles: non-ASCII paths are returned unquoted (core.quotepath) for t
 })
 
 test('sandboxDiffCommand: diff limited to the given tracked files, shell-quoted; null when there is nothing tracked', () => {
-  assert.equal(sandboxDiffCommand('origin/main', ['src/a.js', "we'ird/설정.md"]), "git diff $(git merge-base origin/main HEAD) -- 'src/a.js' 'we'\\''ird/설정.md'")
+  assert.equal(sandboxDiffCommand('origin/main', ['src/a.js', "we'ird/설정.md", 'pages/[id].tsx']), "git diff $(git merge-base origin/main HEAD) -- ':(top,literal)src/a.js' ':(top,literal)we'\\''ird/설정.md' ':(top,literal)pages/[id].tsx'")
   assert.equal(sandboxDiffCommand('origin/main', []), null)
 })
 
@@ -69,8 +70,13 @@ test('sandboxTarget: scope include survives, untracked in-scope files are listed
   assert.deepEqual(files, ['src/a.js', 'src/c.js'])
   const t = sandboxTarget(root, 'main', files)
   assert.deepEqual(t.tracked, ['src/a.js']); assert.deepEqual(t.untracked, ['src/c.js'])
-  assert.equal(t.diffCommand, "git diff $(git merge-base main HEAD) -- 'src/a.js'")
+  assert.equal(t.diffCommand, "git diff $(git merge-base main HEAD) -- ':(top,literal)src/a.js'")
   assert.ok(!t.diffCommand.includes('docs/x.md'))
+  // literal pathspec: a bracketed filename must not act as a glob that matches its siblings
+  write(root, 'pages/[id].tsx', 'id\n'); write(root, 'pages/i.tsx', 'i\n'); write(root, 'pages/d.tsx', 'd\n'); run(['add', '-A']); run(['commit', '-q', '-m', 'pages'])
+  const lit = sandboxTarget(root, 'main', ['pages/[id].tsx'])
+  const shown = execFileSync('sh', ['-c', `${lit.diffCommand.replace('git diff ', 'git diff --name-only ')}`], { cwd: root, encoding: 'utf8' }).trim().split('\n')
+  assert.deepEqual(shown, ['pages/[id].tsx'])
   const onlyNew = sandboxTarget(root, 'main', ['src/c.js'])
   assert.equal(onlyNew.diffCommand, null); assert.deepEqual(onlyNew.untracked, ['src/c.js'])
 })
