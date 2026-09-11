@@ -15,17 +15,18 @@ export function renderPayload(p) {
   return parts.join('\n')
 }
 
-function header({ rubricCore, rubricRepo, transport }) {
+function header({ rubricCore, rubricRepo, rubricScope = '', transport }) {
   const h = [rubricCore.trim(), '', rubricRepo.trim(), '']
+  if (rubricScope) h.push(rubricScope.trim(), '')
   return transport === 'inline' ? [TOOLING_BLOCK, '', ...h] : h
 }
 
-export function buildOpenRequest({ rubricCore, rubricRepo, base, mergeBase, focus, transport, root, diffCommand, payload, gates = [], scopeName = null }) {
+export function buildOpenRequest({ rubricCore, rubricRepo, rubricScope = '', base, mergeBase, focus, transport, root, diffCommand, payload, gates = [], scopeName = null }) {
   const target = ['## Target', `Base: \`${base}\` (merge-base ${mergeBase.slice(0, 7)}).${scopeName ? ` Scope: \`${scopeName}\`.` : ''}`]
   if (focus) target.push(`Author focus: ${focus}`)
   if (transport === 'sandbox') target.push(`Repository root: ${root}. Run \`${diffCommand}\` yourself (read-only) and read any file you need for context.`)
   else target.push('The diff and the full content of every changed in-scope file are inlined below. Cite `file` exactly as shown in the `## File:` headers.')
-  return [...header({ rubricCore, rubricRepo, transport }), ...target, '', ...(transport === 'inline' ? [renderPayload(payload)] : []), renderGates(gates), 'Round 1: report findings; leave `replies` empty.', ''].join('\n')
+  return [...header({ rubricCore, rubricRepo, rubricScope, transport }), ...target, '', ...(transport === 'inline' ? [renderPayload(payload)] : []), renderGates(gates), 'Round 1: report findings; leave `replies` empty.', ''].join('\n')
 }
 
 function findingBlock(f) {
@@ -39,7 +40,7 @@ function findingBlock(f) {
   ].filter(Boolean).join('\n')
 }
 
-export function buildRoundRequest({ rubricCore, rubricRepo, ledger, transport, root, diffCommand, delta, gates = [] }) {
+export function buildRoundRequest({ rubricCore, rubricRepo, rubricScope = '', ledger, transport, root, diffCommand, delta, gates = [] }) {
   const replied = ledger.findings.filter((f) => ['fixed_claimed', 'rejected_by_author'].includes(f.status))
   const frozen = ledger.findings.filter((f) => FROZEN.has(f.status))
   const verified = ledger.findings.filter((f) => f.status === 'fixed_verified')
@@ -49,7 +50,7 @@ export function buildRoundRequest({ rubricCore, rubricRepo, ledger, transport, r
     ? [`Repository root: ${root}. Re-run \`${diffCommand}\` to see the current state; verify each reply at its file/anchor.`]
     : [`## Changes since round ${ledger.round} (diff from ${delta.from.slice(0, 7)})`, '```diff', delta.diff || '(no diff)', '```', '', ...delta.newFiles.flatMap(fileBlock)]
   return [
-    ...header({ rubricCore, rubricRepo, transport }),
+    ...header({ rubricCore, rubricRepo, rubricScope, transport }),
     `## Round ${n}`, ...state, '',
     '## Author replies (answer EVERY id below with exactly one verdict)', ...(replied.length ? replied.map(findingBlock) : ['(none)']), '',
     '## Frozen (do not re-raise; `reopen` only with new evidence)', ...(frozen.length ? frozen.map((f) => `- ${f.id} [${f.status}] ${f.title}`) : ['(none)']), '',

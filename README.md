@@ -52,6 +52,7 @@ Details: [docs/protocol.md](docs/protocol.md) · 한국어: [docs/protocol.ko.md
 | `gate_tail_bytes` | `4000` | how much of each gate's output the reviewer sees |
 | `exclude` | `[".review"]` | never reviewed |
 | `scopes` | `{}` | `{ "docs": { "include": ["docs/**"], "exclude": [] } }` → `open --scope docs` |
+| `scopes.<name>.rubric` | — | optional extra rubric file appended after `.review/rubric.md` when that scope is selected |
 | `gates` | `[]` | shell commands run before every round; exit code + output tail are sent to the reviewer as evidence |
 
 ## Hooks
