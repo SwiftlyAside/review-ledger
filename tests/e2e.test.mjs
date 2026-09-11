@@ -120,3 +120,22 @@ test('open with no changes / bad scope / codex failure does not create a run', (
   scenario(r2, [{ fail: 'boom' }])
   const r = cli(r2, ['open']); assert.equal(r.code, 1); assert.match(r.out, /R1 failed/); assert.equal(ledger(r2).status, 'idle')
 })
+
+test('scope rubric: missing file dies, present file reaches R1 and the next round', () => {
+  const { root } = repoWithChange({ transport: 'sandbox', scopes: { posts: { include: ['src/**'], rubric: '.review/rubric-content.md' } } })
+  let r = cli(root, ['open', '--scope', 'posts'])
+  assert.equal(r.code, 1, r.out)
+  assert.match(r.out, /scopes\.posts\.rubric not found/)
+
+  write(root, '.review/rubric-content.md', '# SCOPE-RULES\n')
+  scenario(root, [reply([finding()]), reply([], [{ id: 'F1', verdict: 'accept_fix', reason: 'ok' }], 'approve')])
+  r = cli(root, ['open', '--scope', 'posts'])
+  assert.equal(r.code, 0, r.out)
+  const l = ledger(root)
+  assert.equal(l.rubric_scope, '.review/rubric-content.md')
+  assert.match(readFileSync(join(root, '.review', 'runs', l.run_id, 'r1.request.md'), 'utf8'), /SCOPE-RULES/)
+
+  assert.equal(cli(root, ['reply', 'F1', 'fix', '--evidence', 'e']).code, 0)
+  assert.equal(cli(root, ['round']).code, 0)
+  assert.match(readFileSync(join(root, '.review', 'runs', l.run_id, 'r2.request.md'), 'utf8'), /SCOPE-RULES/)
+})

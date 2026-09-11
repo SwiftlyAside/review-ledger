@@ -35,6 +35,12 @@ function parseArgs(argv) {
   return { opts, pos }
 }
 const die = (msg) => { console.error(`[review-ledger] ${msg}`); process.exit(1) }
+const readScopeRubric = (rel, name) => {
+  if (!rel) return ''
+  const p = join(ROOT, rel)
+  if (!existsSync(p)) die(`scopes.${name}.rubric not found: ${p}`)
+  return readFileSync(p, 'utf8')
+}
 const log = (msg) => console.log(`[review-ledger] ${msg}`)
 const nowIso = () => new Date().toISOString()
 const runId = () => new Date().toISOString().replace(/[-:]/g, '').replace(/\..+/, '').replace('T', '-')
@@ -94,7 +100,7 @@ function cmdOpen(opts) {
   if (!mb) die(`no merge-base between ${base} and HEAD`)
   let scope
   try { scope = resolveScope(cfg, opts.scope || null) } catch (e) { die(e.message) }
-  const rubricScope = opts.scope && cfg.scopes[opts.scope]?.rubric ? readFileSync(join(ROOT, cfg.scopes[opts.scope].rubric), 'utf8') : ''
+  const rubricScope = readScopeRubric(opts.scope ? cfg.scopes[opts.scope]?.rubric : null, opts.scope)
   const files = changedFiles(ROOT, mb, scope)
   if (!files.length) die(`no changes against ${base} (merge-base ${mb.slice(0, 7)})${opts.scope ? ` in scope ${opts.scope}` : ''} — nothing to review`)
   if (transport === 'sandbox' && cfg.probe && !opts['no-probe']) {
@@ -170,7 +176,7 @@ function cmdRound(opts) {
   const req = join(dir, `r${n}.request.md`), out = join(dir, `r${n}.reply.json`), ev = join(dir, `r${n}.events.jsonl`)
   const gates = runGates(ROOT, cfg.gates, { tailBytes: cfg.gate_tail_bytes })
   const delta = l.transport === 'inline' ? inlineDelta(l) : null
-  const rubricScope = l.rubric_scope ? readFileSync(join(ROOT, l.rubric_scope), 'utf8') : ''
+  const rubricScope = readScopeRubric(l.rubric_scope, l.scope)
   const baseReq = buildRoundRequest({ rubricCore, rubricRepo, rubricScope, ledger: l, transport: l.transport, root: ROOT, diffCommand: sandboxDiffCommand(l.base, l.scope_globs.exclude), delta, gates })
   const call = () => runCodex(resumeArgs({ threadId: l.reviewer.thread_id, effort, schema: TEMPLATES.schema, outFile: out }), { cwd: ROOT, input: readFileSync(req, 'utf8'), outFile: out, eventsFile: ev, timeout: cfg.timeout_ms, validate: validateReply })
   writeFileSync(req, baseReq)
