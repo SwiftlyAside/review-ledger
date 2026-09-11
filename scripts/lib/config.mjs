@@ -17,7 +17,7 @@ export const DEFAULT_CONFIG = Object.freeze({
   probe: true,
   inline_max_bytes: 400000,
   gate_tail_bytes: 4000,
-  exclude: ['.review'],
+  exclude: ['.review/ledger.json', '.review/ledger.md', '.review/runs/**'],
   scopes: {},
   gates: [],
 })

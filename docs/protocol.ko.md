@@ -85,12 +85,12 @@ codex exec resume "$THREAD" -c model_reasoning_effort="medium" \
 
 ## 6. 전송 방식(transport)
 
-- **sandbox**(기본): 리뷰어가 read-only 샌드박스에서 `git diff $(git merge-base <base> HEAD)`를 직접 실행하고 필요한 파일을 읽는다. R1 전에 30초 프로브(`reviewer.probe_model`, low, 셸 명령 1개)로 샌드박스 exec 생존을 확인한다. `deny-read ACLs`가 뜨면 중단하고 `--transport inline`을 권한다.
+- **sandbox**(기본): 리뷰어가 read-only 샌드박스에서 `git diff $(git merge-base <base> HEAD) -- <스코프 안 추적 파일>`(파일마다 `:(top,literal)` 리터럴 pathspec — `[id]` 류 이름이 글로브가 되지 않는다)을 직접 실행하고, 미추적 스코프 파일은 요청문에 열거돼 전문을 읽는다(`git diff`는 미추적 파일을 보여주지 않는다). 그 밖의 파일은 맥락용으로만 읽는다. 파일 집합은 매 회전 다시 계산하므로 `--scope`와 `open` 이후 추가된 파일이 샌드박스 전송에서도 살아남는다. R1 전에 30초 프로브(`reviewer.probe_model`, low, 셸 명령 1개)로 샌드박스 exec 생존을 확인한다. `deny-read ACLs`가 뜨면 중단하고 `--transport inline`을 권한다.
 - **inline**: 요청문 맨 앞에 도구 호출을 금지하는 `<tooling>` 블록을 두고 diff와 scope 내 변경 파일 전문을 넣는다. `inline_max_bytes`를 넘으면 파일 전문을 빼고 diff만, diff마저 넘으면 중단하고 scope를 좁히라고 안내한다. R2부터는 직전 회전 HEAD 대비 diff와 R1 이후 새로 생긴 파일 전문만 보낸다. 스레드가 R1 페이로드를 기억한다. 깨끗한 변경분을 위해 `open` 전에 커밋한다.
 
 ## 7. scope와 gate
 
-- `scopes`: 이름 → `{ include, exclude }` 글로브. `open --scope <name>`으로 리뷰 파일을 제한한다. 미지정이면 base 대비 변경 파일 전부에서 `exclude`를 뺀다.
+- `scopes`: 이름 → `{ include, exclude }` 글로브. `open --scope <name>`으로 리뷰 파일을 제한한다. 미지정이면 base 대비 변경 파일 전부에서 `exclude`를 뺀다. 기본 `exclude`는 정확히 `.review/ledger.json`·`.review/ledger.md`·`.review/runs/**` 셋이다 — 커밋되는 `.review/config.json`과 루브릭 파일은 리뷰 대상이다. exclude 글로브는 첫 경로 세그먼트와 같을 때도 매칭되므로 `.review` 한 단어는 그 파일들을 숨긴다.
 - `scopes.<name>.rubric`: 선택 항목. 그 스코프를 고르면 `rubric.md` 뒤에 이어 보낼 추가 루브릭 파일 경로(레포 루트 기준). 원장이 경로를 기억해 이후 회전에도 같이 간다.
 - `gates`: R1과 매 회전 직전에 CLI가 실행하는 셸 명령(테스트·린트·예산 검사). 종료 코드와 출력 꼬리를 `## Deterministic gates` 절로 요청문에 붙여 리뷰어가 저자 말이 아니라 기계 근거를 본다. 게이트 실패가 회전을 막지는 않는다.
 

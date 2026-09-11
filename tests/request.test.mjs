@@ -31,6 +31,15 @@ test('round: replies block, frozen, verified, disputed, delta (inline) or re-run
   assert.ok(i.startsWith(TOOLING_BLOCK)); assert.match(i, /## Changes since round 1 \(diff from abc1234\)/); assert.match(i, /\+new line/); assert.match(i, /## File: n\.md/)
 })
 
+test('open/sandbox: untracked in-scope files are listed for full reads; no diff line when nothing is tracked; files outside the list are context only', () => {
+  const r = buildOpenRequest({ ...base, transport: 'sandbox', payload: null, untracked: ['src/c.js', 'new dir/설정.md'] })
+  assert.match(r, /Run `git diff X` yourself/); assert.match(r, /Untracked in-scope files[^\n]*read each in full[^\n]*`src\/c\.js`, `new dir\/설정\.md`/); assert.match(r, /context, not review targets/)
+  const n = buildOpenRequest({ ...base, transport: 'sandbox', payload: null, diffCommand: null, untracked: ['src/c.js'] })
+  assert.ok(!n.includes('Run `')); assert.match(n, /Untracked in-scope files/)
+  const s = buildRoundRequest({ ...base, transport: 'sandbox', ledger: { round: 1, findings: [] }, delta: null, untracked: ['src/c.js'] })
+  assert.match(s, /Re-run `git diff X`/); assert.match(s, /Untracked in-scope files[^\n]*`src\/c\.js`/)
+})
+
 test('protocolViolationSuffix lists ids', () => { assert.match(protocolViolationSuffix(['F1', 'F2']), /F1, F2/) })
 
 test('open request appends scope rubric after repo rubric', () => {

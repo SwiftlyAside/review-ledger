@@ -25,6 +25,24 @@ test('init writes config, rubric, gitignore; refuses to overwrite without --forc
   assert.equal(cli(root, ['init']).code, 1)
   assert.equal(cli(root, ['init', '--force']).code, 0)
   assert.equal(readFileSync(join(root, '.gitignore'), 'utf8').split('.review/runs/').length, 2)
+  assert.deepEqual(JSON.parse(readFileSync(join(root, '.review', 'config.json'), 'utf8')).exclude, ['.review/ledger.json', '.review/ledger.md', '.review/runs/**'])
+})
+
+test('sandbox transport keeps --scope and enumerates untracked in-scope files; the ledger file list is refreshed each round', () => {
+  const { root, run } = repoWithChange({ transport: 'sandbox', scopes: { src: { include: ['src/**'] } } })
+  write(root, 'src/c.js', 'const c = 1\n'); write(root, 'docs/x.md', 'x\n')
+  scenario(root, [reply([finding()]), reply([], [{ id: 'F1', verdict: 'accept_fix', reason: 'ok' }], 'approve')])
+  let r = cli(root, ['open', '--scope', 'src']); assert.equal(r.code, 0, r.out)
+  const l1 = ledger(root)
+  assert.deepEqual(l1.files, ['src/a.js', 'src/b.js', 'src/c.js'])
+  const req1 = readFileSync(join(root, '.review', 'runs', l1.run_id, 'r1.reply.json.request.txt'), 'utf8')
+  assert.match(req1, /-- ':\(top,literal\)src\/a\.js' ':\(top,literal\)src\/b\.js'`/); assert.match(req1, /Untracked in-scope files[^\n]*`src\/c\.js`/); assert.ok(!req1.includes('docs/x.md'))
+  run(['add', 'src/c.js']); run(['commit', '-q', '-m', 'c']); write(root, 'src/d.js', 'const d = 1\n')
+  assert.equal(cli(root, ['reply', 'F1', 'fix', '--evidence', 'e']).code, 0)
+  r = cli(root, ['round']); assert.equal(r.code, 0, r.out)
+  const req2 = readFileSync(join(root, '.review', 'runs', l1.run_id, 'r2.reply.json.request.txt'), 'utf8')
+  assert.match(req2, /Re-run `git diff[^`]*':\(top,literal\)src\/a\.js' ':\(top,literal\)src\/b\.js' ':\(top,literal\)src\/c\.js'`/); assert.match(req2, /Untracked in-scope files[^\n]*`src\/d\.js`/)
+  assert.deepEqual(ledger(root).files, ['src/a.js', 'src/b.js', 'src/c.js', 'src/d.js'])
 })
 
 test('(a) fix → accept_fix → converged in 2 rounds; gates output reaches the reviewer', () => {
@@ -35,7 +53,7 @@ test('(a) fix → accept_fix → converged in 2 rounds; gates output reaches the
   const l1 = ledger(root)
   assert.equal(l1.status, 'open'); assert.equal(l1.reviewer.thread_id, 't-fake'); assert.deepEqual(l1.files, ['src/a.js', 'src/b.js'])
   const req1 = readFileSync(join(root, '.review', 'runs', l1.run_id, 'r1.reply.json.request.txt'), 'utf8')
-  assert.match(req1, /gate-ok/); assert.match(req1, /Run `git diff/); assert.match(req1, /Author focus: ticket/)
+  assert.match(req1, /gate-ok/); assert.match(req1, /Run `git diff \$\(git merge-base main HEAD\) -- ':\(top,literal\)src\/a\.js' ':\(top,literal\)src\/b\.js'`/); assert.match(req1, /Author focus: ticket/); assert.ok(!req1.includes('Untracked in-scope'))
   assert.equal(cli(root, ['round']).code, 1) // unanswered F1, F2
   assert.equal(cli(root, ['reply', 'F1', 'fix']).code, 1) // fix needs evidence
   assert.equal(cli(root, ['reply', 'F1', 'fix', '--evidence', 'node --test → pass']).code, 0)
