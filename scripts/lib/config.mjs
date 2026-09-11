@@ -48,6 +48,7 @@ export function validateConfig(c) {
   for (const [n, s] of Object.entries(c.scopes || {})) {
     if (!s || !Array.isArray(s.include) || !s.include.every((g) => typeof g === 'string')) errs.push(`scopes.${n}.include must be string[]`)
     if (s?.exclude && !Array.isArray(s.exclude)) errs.push(`scopes.${n}.exclude must be string[]`)
+    if (s?.rubric !== undefined && typeof s.rubric !== 'string') errs.push(`scopes.${n}.rubric must be a string path`)
   }
   return errs
 }

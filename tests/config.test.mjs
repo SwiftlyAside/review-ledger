@@ -39,3 +39,10 @@ test('loadConfig: missing file → defaults; invalid file → throws', () => {
   writeFileSync(join(root, '.review', 'config.json'), JSON.stringify({ transport: 'nope' }))
   assert.throws(() => loadConfig(root), /transport/)
 })
+
+test('scopes.<name>.rubric must be a string when present', () => {
+  const c = mergeConfig({ scopes: { posts: { include: ['content/**'], rubric: 5 } } })
+  assert.ok(validateConfig(c).some((e) => /scopes\.posts\.rubric/.test(e)))
+  const ok = mergeConfig({ scopes: { posts: { include: ['content/**'], rubric: '.review/rubric-content.md' } } })
+  assert.deepEqual(validateConfig(ok).filter((e) => /rubric/.test(e)), [])
+})

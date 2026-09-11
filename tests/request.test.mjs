@@ -32,3 +32,16 @@ test('round: replies block, frozen, verified, disputed, delta (inline) or re-run
 })
 
 test('protocolViolationSuffix lists ids', () => { assert.match(protocolViolationSuffix(['F1', 'F2']), /F1, F2/) })
+
+test('open request appends scope rubric after repo rubric', () => {
+  const req = buildOpenRequest({ ...base, rubricCore: 'CORE', rubricRepo: 'REPO', rubricScope: 'SCOPE-RULES', transport: 'sandbox', payload: null, scopeName: 'posts' })
+  assert.ok(req.indexOf('REPO') < req.indexOf('SCOPE-RULES'))
+  assert.ok(req.indexOf('SCOPE-RULES') < req.indexOf('## Target'))
+})
+
+test('round request repeats the scope rubric after the repo rubric', () => {
+  const ledger = { round: 1, findings: [] }
+  const req = buildRoundRequest({ ...base, rubricCore: 'CORE', rubricRepo: 'REPO', rubricScope: 'SCOPE-RULES', transport: 'sandbox', ledger, delta: null })
+  assert.ok(req.indexOf('REPO') < req.indexOf('SCOPE-RULES'))
+  assert.ok(req.indexOf('SCOPE-RULES') < req.indexOf('## Round 2'))
+})

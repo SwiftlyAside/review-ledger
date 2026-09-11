@@ -35,6 +35,12 @@ function parseArgs(argv) {
   return { opts, pos }
 }
 const die = (msg) => { console.error(`[review-ledger] ${msg}`); process.exit(1) }
+const readScopeRubric = (rel, name) => {
+  if (!rel) return ''
+  const p = join(ROOT, rel)
+  if (!existsSync(p)) die(`scopes.${name}.rubric not found: ${p}`)
+  return readFileSync(p, 'utf8')
+}
 const log = (msg) => console.log(`[review-ledger] ${msg}`)
 const nowIso = () => new Date().toISOString()
 const runId = () => new Date().toISOString().replace(/[-:]/g, '').replace(/\..+/, '').replace('T', '-')
@@ -94,6 +100,7 @@ function cmdOpen(opts) {
   if (!mb) die(`no merge-base between ${base} and HEAD`)
   let scope
   try { scope = resolveScope(cfg, opts.scope || null) } catch (e) { die(e.message) }
+  const rubricScope = readScopeRubric(opts.scope ? cfg.scopes[opts.scope]?.rubric : null, opts.scope)
   const files = changedFiles(ROOT, mb, scope)
   if (!files.length) die(`no changes against ${base} (merge-base ${mb.slice(0, 7)})${opts.scope ? ` in scope ${opts.scope}` : ''} — nothing to review`)
   if (transport === 'sandbox' && cfg.probe && !opts['no-probe']) {
@@ -108,11 +115,11 @@ function cmdOpen(opts) {
     if (payload.mode === 'diff-only') log(`inline payload trimmed to diff only (${payload.bytes} bytes)`)
   }
   const gates = runGates(ROOT, cfg.gates, { tailBytes: cfg.gate_tail_bytes })
-  const fresh = { ...bootstrapLedger(cfg), status: 'open', run_id: runId(), base, merge_base: mb, transport, scope: opts.scope || null, scope_globs: scope, files, focus: opts.focus || null, reviewer: { engine: 'codex', model, effort, thread_id: null }, opened_at: nowIso() }
+  const fresh = { ...bootstrapLedger(cfg), status: 'open', run_id: runId(), base, merge_base: mb, transport, scope: opts.scope || null, scope_globs: scope, rubric_scope: cfg.scopes[opts.scope]?.rubric || null, files, focus: opts.focus || null, reviewer: { engine: 'codex', model, effort, thread_id: null }, opened_at: nowIso() }
   const dir = join(REVIEW, 'runs', fresh.run_id)
   mkdirSync(dir, { recursive: true })
   const req = join(dir, 'r1.request.md'), out = join(dir, 'r1.reply.json'), ev = join(dir, 'r1.events.jsonl')
-  writeFileSync(req, buildOpenRequest({ rubricCore, rubricRepo, base, mergeBase: mb, focus: fresh.focus, transport, root: ROOT, diffCommand: sandboxDiffCommand(base, scope.exclude), payload, gates, scopeName: fresh.scope }))
+  writeFileSync(req, buildOpenRequest({ rubricCore, rubricRepo, rubricScope, base, mergeBase: mb, focus: fresh.focus, transport, root: ROOT, diffCommand: sandboxDiffCommand(base, scope.exclude), payload, gates, scopeName: fresh.scope }))
   log(`R1 ${model}@${effort} transport=${transport} base=${base} files=${files.length} run=${fresh.run_id} … (up to ${cfg.timeout_ms / 60000} min)`)
   const res = runCodex(openArgs({ model, effort, sandbox: cfg.codex_sandbox, root: ROOT, schema: TEMPLATES.schema, outFile: out }), { cwd: ROOT, input: readFileSync(req, 'utf8'), outFile: out, eventsFile: ev, timeout: cfg.timeout_ms, validate: validateReply })
   if (!res.ok) die(`R1 failed (not counted as a round): ${res.error}. Events: ${ev}`)
@@ -169,7 +176,8 @@ function cmdRound(opts) {
   const req = join(dir, `r${n}.request.md`), out = join(dir, `r${n}.reply.json`), ev = join(dir, `r${n}.events.jsonl`)
   const gates = runGates(ROOT, cfg.gates, { tailBytes: cfg.gate_tail_bytes })
   const delta = l.transport === 'inline' ? inlineDelta(l) : null
-  const baseReq = buildRoundRequest({ rubricCore, rubricRepo, ledger: l, transport: l.transport, root: ROOT, diffCommand: sandboxDiffCommand(l.base, l.scope_globs.exclude), delta, gates })
+  const rubricScope = readScopeRubric(l.rubric_scope, l.scope)
+  const baseReq = buildRoundRequest({ rubricCore, rubricRepo, rubricScope, ledger: l, transport: l.transport, root: ROOT, diffCommand: sandboxDiffCommand(l.base, l.scope_globs.exclude), delta, gates })
   const call = () => runCodex(resumeArgs({ threadId: l.reviewer.thread_id, effort, schema: TEMPLATES.schema, outFile: out }), { cwd: ROOT, input: readFileSync(req, 'utf8'), outFile: out, eventsFile: ev, timeout: cfg.timeout_ms, validate: validateReply })
   writeFileSync(req, baseReq)
   log(`R${n} resume ${l.reviewer.thread_id.slice(0, 8)} @${effort} …`)

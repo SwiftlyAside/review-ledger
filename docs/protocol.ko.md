@@ -91,6 +91,7 @@ codex exec resume "$THREAD" -c model_reasoning_effort="medium" \
 ## 7. scope와 gate
 
 - `scopes`: 이름 → `{ include, exclude }` 글로브. `open --scope <name>`으로 리뷰 파일을 제한한다. 미지정이면 base 대비 변경 파일 전부에서 `exclude`를 뺀다.
+- `scopes.<name>.rubric`: 선택 항목. 그 스코프를 고르면 `rubric.md` 뒤에 이어 보낼 추가 루브릭 파일 경로(레포 루트 기준). 원장이 경로를 기억해 이후 회전에도 같이 간다.
 - `gates`: R1과 매 회전 직전에 CLI가 실행하는 셸 명령(테스트·린트·예산 검사). 종료 코드와 출력 꼬리를 `## Deterministic gates` 절로 요청문에 붙여 리뷰어가 저자 말이 아니라 기계 근거를 본다. 게이트 실패가 회전을 막지는 않는다.
 
 ## 8. 저자 규칙

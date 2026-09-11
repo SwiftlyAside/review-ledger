@@ -91,6 +91,7 @@ The thread id comes from the first `--json` event, `thread.started`. Reply round
 ## 7. Scopes and gates
 
 - `scopes`: named `{ include, exclude }` glob sets; `open --scope <name>` restricts the reviewed files. Without a scope every file changed against the base is reviewed, minus `exclude`.
+- `scopes.<name>.rubric` — optional extra rubric file sent after `rubric.md` when this scope is selected (repo-root-relative path; the run remembers it, so every later round sends it too).
 - `gates`: shell commands the CLI runs right before R1 and every round (tests, linters, budget checks). Their exit codes and output tails are appended to the request as `## Deterministic gates` so the reviewer sees machine evidence, not the author's word. A failing gate does not stop the round.
 
 ## 8. Author rules
