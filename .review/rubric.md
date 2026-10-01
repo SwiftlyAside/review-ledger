@@ -21,7 +21,7 @@ This repository is the review-ledger plugin itself: a Claude Code plugin (Node 2
 
 - `matchScope`: an exclude glob also matches when it equals the first path segment (`.review` would drop `.review/config.json`) — that is why the default exclude names `ledger.json`, `ledger.md`, `runs/**` explicitly.
 - Sandbox transport: the request tells the reviewer to run a `git diff … -- <files>` limited to in-scope tracked files and lists untracked in-scope files; the set is recomputed every round.
-- `codex exec resume` accepts neither `-m` nor `-s` (0.153.x) — model and sandbox are inherited from the thread.
+- `codex exec resume` does **not** inherit model or sandbox from the thread (observed through 0.159.2: unpinned R2 ran on the machine default model and sandbox). It accepts `-m` but not `-s`, so every resume pins `-m`, effort and `-c sandbox_mode=`, and each reviewer turn is checked against the rollout `turn_context`.
 
 ## Allowed commands (sandbox transport only)
 

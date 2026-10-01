@@ -74,14 +74,22 @@ codex exec -m gpt-5.6-sol -c model_reasoning_effort="xhigh" -s read-only -C "$RE
   --json --output-schema templates/review.schema.json -o .review/runs/<run>/r1.reply.json - < .review/runs/<run>/r1.request.md
 ```
 
-R2+ (same thread; `resume` inherits model and sandbox and accepts neither `-m` nor `-s`):
+R2+ (same thread). `resume` does **not** inherit model or sandbox from the thread — unpinned it falls back to the machine defaults (observed: R1 `gpt-5.6-sol`/`danger-full-access` → R2 `gpt-6-astra`/`workspace-write`, with the drift warning only on the first resumed turn). `resume` accepts `-m` but not `-s`, so the sandbox goes through `sandbox_mode`:
 
 ```sh
-codex exec resume "$THREAD" -c model_reasoning_effort="medium" \
+codex exec resume "$THREAD" -m gpt-5.6-sol -c model_reasoning_effort="medium" -c sandbox_mode="read-only" \
   --json --output-schema templates/review.schema.json -o .review/runs/<run>/r2.reply.json - < .review/runs/<run>/r2.request.md
 ```
 
-The thread id comes from the first `--json` event, `thread.started`. Reply rounds are small (~20K input tokens), so `effort_round` is `medium`; a round containing a `reopen` uses `effort_reopen` (`high`). With `codex_sandbox: "danger-full-access"` the CLI adds `-c approval_policy="never"`.
+The thread id comes from the first `--json` event, `thread.started`. Reply rounds are small (~20K input tokens), so `effort_round` is `medium`; a round containing a `reopen` uses `effort_reopen` (`high`). With `codex_sandbox: "danger-full-access"` the CLI adds `-c approval_policy="never"` to both calls.
+
+After every reviewer turn the CLI reads the thread's rollout (`$CODEX_HOME/sessions/YYYY/MM/DD/rollout-*-<thread>.jsonl`, default `~/.codex`), requires a `turn_context` added by this call (counted before and after the call — this assumes one `round` at a time per run; concurrent resumes of the same thread are unsupported), and compares its model, effort and sandbox with what it pinned.
+
+- **Drift** discards the reply and does not count the round. The drifted turn cannot be removed from the codex thread, so resuming it would feed that reply to every later round: an R1 drift opens no run; an Rn drift sets the run to `escalated` — close it and open a new one.
+- **Unverifiable** (no rollout, no new `turn_context`, or one without model/effort/sandbox) proceeds with an `UNVERIFIED` warning.
+- A resume that reports a thread id other than the ledger's is a failed call (retried once, never applied). The reply file is deleted before each call so an earlier attempt's file can never pass as the answer.
+- Observed values are stored per round in `history[].reviewer` (`verified: false` when unchecked). Ledgers opened by 0.2.1 or earlier have no `reviewer.sandbox`; it is recovered from the first `turn_context` of the thread's oldest rollout (never from the current config) and saved, and the round refuses to run if that is not possible.
+- Known gap: a call that completed its turn but failed the output schema is retried on the same thread, so that malformed reply stays in the thread's context.
 
 ## 6. Transports
 
