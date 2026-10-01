@@ -40,7 +40,7 @@ Details: [docs/protocol.md](docs/protocol.md) · 한국어: [docs/protocol.ko.md
 
 | key | default | notes |
 |---|---|---|
-| `reviewer.model` / `effort_open` / `effort_round` / `effort_reopen` | `gpt-5.6-sol` / `xhigh` / `medium` / `high` | always pinned explicitly |
+| `reviewer.model` / `effort_open` / `effort_round` / `effort_reopen` | `gpt-5.6-sol` / `xhigh` / `medium` / `high` | pinned explicitly on every call, R2+ included; each turn is then checked against the codex rollout (drift discards the reply and escalates the run; an unreadable rollout is recorded as `UNVERIFIED`) |
 | `reviewer.probe_model` | `gpt-5.6-terra` | used only by the 30-second sandbox probe |
 | `base` | `origin/main` | diff is `git diff $(git merge-base base HEAD)` |
 | `blocking` | `["P0","P1"]` | only these hold the loop |

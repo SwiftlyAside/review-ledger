@@ -74,14 +74,22 @@ codex exec -m gpt-5.6-sol -c model_reasoning_effort="xhigh" -s read-only -C "$RE
   --json --output-schema templates/review.schema.json -o .review/runs/<run>/r1.reply.json - < .review/runs/<run>/r1.request.md
 ```
 
-R2 이후(같은 스레드; `resume`은 모델·샌드박스를 상속하고 `-m`·`-s`를 받지 않는다):
+R2 이후(같은 스레드). `resume`은 스레드의 모델·샌드박스를 **상속하지 않는다** — 명시하지 않으면 머신 기본값으로 떨어진다(실측: R1 `gpt-5.6-sol`/`danger-full-access` → R2 `gpt-6-astra`/`workspace-write`, 드리프트 경고는 첫 resume 턴에만 뜬다). `resume`은 `-m`은 받지만 `-s`는 받지 않아 샌드박스는 `sandbox_mode`로 넘긴다:
 
 ```sh
-codex exec resume "$THREAD" -c model_reasoning_effort="medium" \
+codex exec resume "$THREAD" -m gpt-5.6-sol -c model_reasoning_effort="medium" -c sandbox_mode="read-only" \
   --json --output-schema templates/review.schema.json -o .review/runs/<run>/r2.reply.json - < .review/runs/<run>/r2.request.md
 ```
 
-스레드 ID는 `--json` 첫 이벤트 `thread.started`에서 읽는다. 회신 회전은 약 2만 입력 토큰이라 `effort_round`는 `medium`, `reopen`이 걸린 회전만 `effort_reopen`(`high`). `codex_sandbox: "danger-full-access"`면 CLI가 `-c approval_policy="never"`를 덧붙인다.
+스레드 ID는 `--json` 첫 이벤트 `thread.started`에서 읽는다. 회신 회전은 약 2만 입력 토큰이라 `effort_round`는 `medium`, `reopen`이 걸린 회전만 `effort_reopen`(`high`). `codex_sandbox: "danger-full-access"`면 CLI가 두 호출 모두에 `-c approval_policy="never"`를 덧붙인다.
+
+리뷰어 턴마다 CLI가 스레드 rollout(`$CODEX_HOME/sessions/YYYY/MM/DD/rollout-*-<thread>.jsonl`, 기본 `~/.codex`)을 읽어 이번 호출이 추가한 `turn_context`를 찾고(호출 전후 개수 비교 — run당 `round`는 한 번에 하나라는 전제다. 같은 스레드 동시 resume은 지원하지 않는다), 그 모델·effort·샌드박스를 명시값과 대조한다.
+
+- **드리프트**면 응답을 버리고 회전으로 세지 않는다. 드리프트 턴은 codex 스레드에서 지울 수 없어 resume하면 이후 모든 회전의 문맥이 된다 — R1 드리프트는 run을 만들지 않고, Rn 드리프트는 run을 `escalated`로 둔다. close 후 새로 open한다.
+- **대조 불가**(rollout 없음·새 `turn_context` 없음·모델/effort/샌드박스 누락)는 `UNVERIFIED` 경고와 함께 진행한다.
+- resume이 원장과 다른 thread id를 보고하면 실패한 호출로 본다(1회 재시도, 반영 안 함). 응답 파일은 호출마다 먼저 지워 이전 시도의 파일이 이번 답으로 통과하지 못한다.
+- 관측값은 회전별 `history[].reviewer`에 남는다(대조 못 하면 `verified: false`). 0.2.1 이하가 연 원장엔 `reviewer.sandbox`가 없어 스레드의 가장 오래된 rollout 첫 `turn_context`에서 복원해 저장하고(현재 config로 대체하지 않는다), 복원 못 하면 회전을 거부한다.
+- 알려진 공백: 턴은 끝났지만 출력 스키마에서 떨어진 호출은 같은 스레드로 재시도하므로 그 형식 오류 응답이 스레드 문맥에 남는다.
 
 ## 6. 전송 방식(transport)
 
